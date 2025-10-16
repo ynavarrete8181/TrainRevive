@@ -1,0 +1,47 @@
+{
+  "enero": {
+    "total_reservas": 20,
+    "asistencias": 15,
+    "reservas_activas": 2,
+    "canceladas": 3,
+    "grafico_semanal": [
+      { "dia": "Lun", "asistencias": 2 },
+      { "dia": "Mar", "asistencias": 3 },
+      { "dia": "Mié", "asistencias": 1 },
+      { "dia": "Jue", "asistencias": 3 },
+      { "dia": "Vie", "asistencias": 2 },
+      { "dia": "Sáb", "asistencias": 2 },
+      { "dia": "Dom", "asistencias": 2 }
+    ]
+  },
+  "febrero": {
+    "total_reservas": 25,
+    "asistencias": 18,
+    "reservas_activas": 3,
+    "canceladas": 4,
+    "grafico_semanal": [
+      { "dia": "Lun", "asistencias": 3 },
+      { "dia": "Mar", "asistencias": 2 },
+      { "dia": "Mié", "asistencias": 2 },
+      { "dia": "Jue", "asistencias": 4 },
+      { "dia": "Vie", "asistencias": 3 },
+      { "dia": "Sáb", "asistencias": 2 },
+      { "dia": "Dom", "asistencias": 2 }
+    ]
+  },
+  "marzo": {
+    "total_reservas": 30,
+    "asistencias": 25,
+    "reservas_activas": 5,
+    "canceladas": 2,
+    "grafico_semanal": [
+      { "dia": "Lun", "asistencias": 4 },
+      { "dia": "Mar", "asistencias": 3 },
+      { "dia": "Mié", "asistencias": 4 },
+      { "dia": "Jue", "asistencias": 5 },
+      { "dia": "Vie", "asistencias": 3 },
+      { "dia": "Sáb", "asistencias": 4 },
+      { "dia": "Dom", "asistencias": 2 }
+    ]
+  }
+}

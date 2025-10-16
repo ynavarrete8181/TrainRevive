@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "TrainRevive",
+    "slug": "TrainRevive",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ynavarrete8181.TrainRevive",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "NSAllowsLocalNetworking": true,
+        "NSExceptionDomains": {
+          "servicesdbanu.uleam.edu.ec": {
+            "NSIncludesSubdomains": true,
+            "NSTemporaryExceptionAllowsInsecureHTTPLoads": false,
+            "NSTemporaryExceptionMinimumTLSVersion": "TLSv1.2"
+          }
+        }
+      }
+    },
+
+    "android": {
+      "package": "com.ynavarrete8181.TrainRevive",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "servicesdbanu.uleam.edu.ec",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+
+    "extra": {
+      "apiUrl": "https://servicesdbanu.uleam.edu.ec/dbanuproduccion",
+      "eas": {
+        "projectId": "fbc17897-48e5-48ce-8012-feeceb288f73"
+      }
+    },
+
+    "plugins": ["expo-secure-store"]
+  }
+}
