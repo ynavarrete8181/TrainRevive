@@ -3,161 +3,85 @@ import {
   View,
   Text,
   ScrollView,
-  Alert,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
-  Pressable,
+  FlatList,
+  Dimensions,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
-import { Button, Card, IconButton } from "react-native-paper";
+import { Card } from "react-native-paper";
 import { LineChart } from "react-native-chart-kit";
-import estadisticasData from "../../data/estadisticasGym.json";
-import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import estadisticasData from "../../data/estadisticasGym.json";
 
-const PRIMARY_COLOR = "rgba(20,73,133,1)";
+const PRIMARY_COLOR = "#144985";
+const meses = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+];
 
-const HomeScreen = ({ navigation }) => {
-  const [turnos, setTurnos] = useState([]);
-  const [categoriaServicios, setCategoriaServicios] = useState([]);
-  const [Servicio, setServicio] = useState([]);
-  const [selectedCategoria, setSelectedCategoria] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [loadingCategoria, setLoadingCategoria] = useState(false);
-  const [loadingServicio, setLoadingServicio] = useState(false);
-  const [loadingSave, setLoadingSave] = useState(false);
-  const [loadingTurnos, setLoadingTurnos] = useState(false);
+const screenWidth = Dimensions.get("window").width - 40;
 
-  // 📊 Estados para estadísticas
-  const [mesSeleccionado, setMesSeleccionado] = useState("febrero");
+const HomeScreen = () => {
+  const [mesSeleccionado, setMesSeleccionado] = useState("marzo");
   const [estadisticas, setEstadisticas] = useState(null);
-
-  // useEffect(() => {
-  //   // fetchCategoriaServicios();
-  //   cargarEstadisticas(mesSeleccionado);
-  // }, []);
-
-  // // Cargar estadísticas según mes
-  // const cargarEstadisticas = (mes) => {
-  //   const data = estadisticasData[mes];
-  //   setEstadisticas(data);
-  // };
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // fetchCategoriaServicios();
     cargarEstadisticas(mesSeleccionado);
-  }, []);
+  }, [mesSeleccionado]);
 
-  // Cargar estadísticas según mes
   const cargarEstadisticas = (mes) => {
-    const data = estadisticasData[mes];
-    setEstadisticas(data);
+    setLoading(true);
+    setTimeout(() => {
+      setEstadisticas(estadisticasData[mes]);
+      setLoading(false);
+    }, 400);
   };
 
-  // const fetchCategoriaServicios = async () => {
-  //   setLoadingCategoria(true);
-  //   try {
-  //     const { data } = await axiosClient.get("/get-categoria-servicio");
-  //     setCategoriaServicios(data);
-  //     if (data.length > 0) setSelectedCategoria(data[0].cat_id);
-  //   } catch (error) {
-  //     Alert.alert("Error", "Error al cargar categorías: " + error.message);
-  //   } finally {
-  //     setLoadingCategoria(false);
-  //   }
-  // };
-
-  // const handleServiciosCategoriaId = async (idCategoria) => {
-  //   setLoadingServicio(true);
-  //   try {
-  //     const { data } = await axiosClient.get(`/get-servicio-categoria-id/${idCategoria}`);
-  //     setServicio(data);
-  //     if (data.length > 0) setSelectedService(data[0].ts_id);
-  //     setTurnos([]);
-  //   } catch (err) {
-  //     Alert.alert("Error", err.response?.data?.error || err.message);
-  //   } finally {
-  //     setLoadingServicio(false);
-  //   }
-  // };
-
-  // const fetchTurnos = async (fecha, servicioId) => {
-  //   if (!servicioId) return;
-  //   setLoadingTurnos(true);
-  //   try {
-  //     const { data } = await axiosClient.get("/get-generar-turno", {
-  //       params: {
-  //         fecha: fecha.toISOString().split("T")[0],
-  //         servicio_id: servicioId,
-  //         estados_permitidos: [8],
-  //       },
-  //     });
-  //     setTurnos(data);
-  //   } catch (err) {
-  //     Alert.alert("Error", err.response?.data?.error || err.message);
-  //   } finally {
-  //     setLoadingTurnos(false);
-  //   }
-  // };
-
-  // const handleReservarTurno = async (t) => {
-  //   try {
-  //     setLoadingSave(true);
-  //     const usuario_id = await AsyncStorage.getItem("USER_ID");
-  //     if (!usuario_id) {
-  //       Alert.alert("Error", "No se encontró el usuario. Inicia sesión nuevamente.");
-  //       return;
-  //     }
-
-  //     const FormDataReservaTurno = {
-  //       p_usuario_id: Number(usuario_id),
-  //       p_servicio_id: t.servicio_id,
-  //       p_horario_gym_id: t.tg_id_horario_gym,
-  //       p_fecha: t.fecha,
-  //       p_hora: t.hora_inicio,
-  //     };
-
-  //     const { data } = await axiosClient.post("/reservar-turno-gym", FormDataReservaTurno);
-  //     if (data.success) {
-  //       Alert.alert("Éxito", "Turno reservado correctamente.");
-  //       fetchTurnos(date, selectedService);
-  //     } else {
-  //       Alert.alert("Atención", data.message || "No se pudo reservar el turno.");
-  //     }
-  //   } catch (error) {
-  //     Alert.alert("Error", "Ocurrió un error al intentar reservar el turno.");
-  //   } finally {
-  //     setLoadingSave(false);
-  //   }
-  // };
+  const renderMes = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.mesItem,
+        mesSeleccionado === item && styles.mesItemActivo,
+      ]}
+      onPress={() => setMesSeleccionado(item)}
+    >
+      <Text
+        style={[
+          styles.mesTexto,
+          mesSeleccionado === item && styles.mesTextoActivo,
+        ]}
+      >
+        {item.toUpperCase()}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
+        
+        {/* 🔹 Selector horizontal de meses */}
+        <View style={styles.selectorContainer}>
+          <Text style={styles.sectionTitle}>📅 Selecciona un mes</Text>
+          <FlatList
+            data={meses}
+            keyExtractor={(item) => item}
+            renderItem={renderMes}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.mesLista}
+          />
+        </View>
+
+        {/* 🔹 Card de estadísticas */}
         <Card style={styles.statsCard}>
           <Text style={styles.statsTitle}>📈 Mis estadísticas</Text>
 
-          {/* Selector de mes */}
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={mesSeleccionado}
-              onValueChange={(itemValue) => {
-                setMesSeleccionado(itemValue);
-                cargarEstadisticas(itemValue);
-              }}
-            >
-              {Object.keys(estadisticasData).map((mes) => (
-                <Picker.Item key={mes} label={mes.toUpperCase()} value={mes} />
-              ))}
-            </Picker>
-          </View>
-
-          {estadisticas ? (
+          {loading ? (
+            <ActivityIndicator size="small" color={PRIMARY_COLOR} />
+          ) : estadisticas ? (
             <>
               <View style={styles.statsRow}>
                 <View style={styles.statBox}>
@@ -184,58 +108,91 @@ const HomeScreen = ({ navigation }) => {
               <LineChart
                 data={{
                   labels: estadisticas.grafico_semanal.map((d) => d.dia),
-                  datasets: [{ data: estadisticas.grafico_semanal.map((d) => d.asistencias) }],
+                  datasets: [
+                    { data: estadisticas.grafico_semanal.map((d) => d.asistencias) },
+                  ],
                 }}
-                width={320}
+                width={screenWidth}
                 height={180}
                 yAxisLabel=""
                 chartConfig={{
                   backgroundColor: "#fff",
-                  backgroundGradientFrom: "#f5f7fa",
+                  backgroundGradientFrom: "#fff",
                   backgroundGradientTo: "#fff",
                   decimalPlaces: 0,
                   color: () => PRIMARY_COLOR,
-                  labelColor: () => "#555",
+                  labelColor: () => "#444",
+                  propsForDots: {
+                    r: "4",
+                    strokeWidth: "2",
+                    stroke: PRIMARY_COLOR,
+                  },
                 }}
-                style={{ marginVertical: 8, borderRadius: 12 }}
+                style={{ marginTop: 10, borderRadius: 12 }}
               />
             </>
           ) : (
-            <ActivityIndicator size="small" color={PRIMARY_COLOR} />
+            <Text style={{ textAlign: "center", color: "#888" }}>
+              No hay datos disponibles
+            </Text>
           )}
         </Card>
-
-        {/* Aquí sigue tu sección de turnos, selects, etc. */}
       </ScrollView>
     </View>
   );
 };
 
+export default HomeScreen;
+
 const styles = StyleSheet.create({
-  statsCard: {
-    marginBottom: 20,
-    padding: 15,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    elevation: 3,
-  },
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "600",
     color: PRIMARY_COLOR,
     marginBottom: 10,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    marginBottom: 15,
+  selectorContainer: {
+    marginBottom: 20,
+  },
+  mesLista: {
+    paddingVertical: 5,
+  },
+  mesItem: {
+    backgroundColor: "#e6ebf2",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginHorizontal: 5,
+  },
+  mesItemActivo: {
+    backgroundColor: PRIMARY_COLOR,
+  },
+  mesTexto: {
+    fontSize: 14,
+    color: "#144985aa",
+    fontWeight: "500",
+  },
+  mesTextoActivo: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  statsCard: {
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 14,
     backgroundColor: "#fff",
+    elevation: 4,
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: PRIMARY_COLOR,
+    marginBottom: 12,
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginVertical: 8,
   },
   statBox: {
     flex: 1,
@@ -247,9 +204,7 @@ const styles = StyleSheet.create({
     color: PRIMARY_COLOR,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#777",
   },
 });
-
-export default HomeScreen;

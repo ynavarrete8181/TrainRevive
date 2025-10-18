@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/Ionicons";
 
-const PerfilScreen = ({ navigation }) => {
+const PerfilScreen = ({ setIsLoggedIn }) => {
   const [DataUser, setDataUser] = useState(null);
 
   useEffect(() => {
@@ -11,8 +11,6 @@ const PerfilScreen = ({ navigation }) => {
       const id = await AsyncStorage.getItem("USER_ID");
       const name = await AsyncStorage.getItem("name");
       const foto = await AsyncStorage.getItem("foto_perfil");
-      const token = await AsyncStorage.getItem("ACCESS_TOKEN");
-
       if (id && name) {
         setDataUser({ nombre: name, email: "usuario@ejemplo.com", foto });
       }
@@ -20,13 +18,31 @@ const PerfilScreen = ({ navigation }) => {
     DataUsuario();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem("authToken");
-      navigation.navigate("Login");
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
+  const handleLogout = () => {
+    Alert.alert(
+      "Cerrar sesión",
+      "¿Seguro que deseas salir?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Sí, salir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem("ACCESS_TOKEN");
+              await AsyncStorage.removeItem("authToken");
+              await AsyncStorage.removeItem("USER_ID");
+              await AsyncStorage.removeItem("name");
+              await AsyncStorage.removeItem("foto_perfil");
+              setIsLoggedIn(false); // 🔥 vuelve automáticamente al login
+            } catch (error) {
+              console.error("Error al cerrar sesión:", error);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (

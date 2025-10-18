@@ -1,55 +1,57 @@
 import React from "react";
-import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Image, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 const TopBar = ({ navigation }) => {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Logo */}
+        {/* Logo institucional */}
         <Image
-          source={require("../../assets/logo.png")}
+          source={require("../../assets/LOGO-blanco-1024x312.png")}
           style={styles.logo}
         />
 
-        {/* Imagen de perfil */}
-        <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-          <Image
-            source={{
-              uri: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
-            }}
-            style={styles.profileImage}
-          />
+        {/* Icono perfil */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Perfil")}
+          activeOpacity={0.8}
+          style={styles.profileButton}
+        >
+          <Ionicons name="person-circle-outline" size={44} color="#fff" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 };
 
+export default TopBar;
+
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: "rgba(20,73,133,1)",
+    backgroundColor: "#144985", // azul institucional
   },
   container: {
-    backgroundColor: "rgba(20,73,133,1)",
+    backgroundColor: "#144985",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    height: 70, // 🔹 altura fija
+    paddingHorizontal: 10,
+    paddingBottom: Platform.OS === "ios" ? 4 : 0, // 🔹 evita que iOS corte el ícono
   },
   logo: {
-    width: 100,
-    height: 40,
+    width: 185,
+    height: "100%", // 🔹 ajusta al alto de la barra
     resizeMode: "contain",
+    marginLeft: -4,
+    marginTop: 5, // ✅ sin empuje innecesario
+    marginBottom:5,
   },
-  profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#fff",
+  profileButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
   },
 });
-
-export default TopBar;

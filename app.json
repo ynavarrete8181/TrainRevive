@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "TrainRevive",
+    "name": "GYM Uleam",
     "slug": "TrainRevive",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/uleam-ico.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
 
@@ -16,7 +16,7 @@
 
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ynavarrete8181.TrainRevive",
+      "bundleIdentifier": "com.uleam.edu.ec.GymUleam",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -33,7 +33,7 @@
     },
 
     "android": {
-      "package": "com.ynavarrete8181.TrainRevive",
+      "package": "com.uleam.edu.ec.GymUleam",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
