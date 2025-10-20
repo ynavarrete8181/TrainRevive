@@ -1,12 +1,12 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { FontAwesome5 } from "@expo/vector-icons"; // o "react-native-vector-icons/FontAwesome5"
+import { FontAwesome5 } from "@expo/vector-icons";
 import TopBar from "./TopBar";
 
-// Pantallas
+// 🧩 Pantallas principales
 import HomeScreen from "../screens/Home/HomeScreen";
+import ReservarScreen from "../screens/Reservas/ReservarScreen";
 import MisReservasScreen from "../screens/Reservas/MisReservasScreen";
-import ReservasScreen from "../screens/Reservas/ReservasScreen";
 import PerfilScreen from "../screens/Perfil/PerfilScreen";
 
 const Tab = createBottomTabNavigator();
@@ -21,10 +21,13 @@ const NavBar = () => {
 
           switch (route.name) {
             case "Inicio":
-              iconName = focused ? "home" : "home";
+              iconName = "home";
               break;
-            case "MisReservas":
+            case "Agendar":
               iconName = focused ? "calendar-check" : "calendar-alt";
+              break;
+            case "Mis Turnos":
+              iconName = "list";
               break;
             case "Perfil":
               iconName = focused ? "user-circle" : "user";
@@ -69,11 +72,13 @@ const NavBar = () => {
         component={ReservarScreen}
         options={{ title: "Agendar" }}
       />
+
       <Tab.Screen
-        name="MisTurnos"
+        name="Mis Turnos"
         component={MisReservasScreen}
         options={{ title: "Mis Turnos" }}
       />
+
       <Tab.Screen
         name="Perfil"
         component={PerfilScreen}

@@ -1,4 +1,4 @@
-package com.ynavarrete8181.TrainRevive
+package com.uleam.edu.ec.GymUleam
 
 import android.app.Application
 import android.content.res.Configuration

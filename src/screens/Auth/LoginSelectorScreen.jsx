@@ -1,11 +1,16 @@
 import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function LoginSelectorScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      {/* Logo ULEAM */}
       <Image
         source={require("../../../assets/uleam-ico.png")}
         style={styles.logo}
@@ -16,7 +21,6 @@ export default function LoginSelectorScreen({ navigation }) {
         Selecciona tu tipo de usuario para continuar
       </Text>
 
-      {/* Íconos minimalistas */}
       <View style={styles.iconRow}>
         <TouchableOpacity
           style={styles.iconContainer}

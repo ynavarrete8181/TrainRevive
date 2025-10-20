@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,34 +10,27 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Button, Card, Menu } from "react-native-paper";
-import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import axiosClient from "../services/apiClient";
+import { useFocusEffect } from "@react-navigation/native";
 
 const PRIMARY_COLOR = "#144985";
 
 const diasSemana = [
-  "domingo",
-  "lunes",
-  "martes",
-  "miércoles",
-  "jueves",
-  "viernes",
-  "sábado",
+  "domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado",
 ];
 const meses = [
-  "enero",
-  "febrero",
-  "marzo",
-  "abril",
-  "mayo",
-  "junio",
-  "julio",
-  "agosto",
-  "septiembre",
-  "octubre",
-  "noviembre",
-  "diciembre",
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
+
+/** ✅ Fecha local YYYY-MM-DD (sin UTC) */
+const toLocalYMD = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 const ReservarScreen = () => {
   const [turnos, setTurnos] = useState([]);
@@ -46,7 +39,7 @@ const ReservarScreen = () => {
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
   const [date, setDate] = useState(new Date());
-  const [reservandoId, setReservandoId] = useState(null); // 🔹 control individual de carga
+  const [reservandoId, setReservandoId] = useState(null);
   const [loading, setLoading] = useState({
     categoria: false,
     servicio: false,
@@ -55,154 +48,211 @@ const ReservarScreen = () => {
   const [menuCategoriaVisible, setMenuCategoriaVisible] = useState(false);
   const [menuServicioVisible, setMenuServicioVisible] = useState(false);
 
-  // 🔹 Al iniciar: carga categorías y muestra turnos del día actual
-  useEffect(() => {
-    fetchCategorias();
-  }, []);
+  /** ♻️ Refrescar token antes de cargar categorías */
+  const refreshToken = async () => {
+    try {
+      const refresh = await AsyncStorage.getItem("REFRESH_TOKEN");
+      if (!refresh) return;
 
-  // 🔹 Formatear fecha legible
+      const { data } = await axiosClient.post(
+        "/refresh-token",
+        {},
+        { headers: { Authorization: `Bearer ${refresh}` } }
+      );
+
+      const newAccessToken = data?.access_token || data?.token || data?.accessToken;
+      if (newAccessToken) {
+        await AsyncStorage.setItem("ACCESS_TOKEN", newAccessToken);
+        if (data.refresh_token) {
+          await AsyncStorage.setItem("REFRESH_TOKEN", data.refresh_token);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error al renovar token:", error);
+    }
+  };
+
+  /** 🧭 Cada vez que la pantalla gana foco, actualiza tokens y datos */
+  useFocusEffect(
+    useCallback(() => {
+      const refreshAndFetch = async () => {
+        await refreshToken();
+        await fetchCategorias();
+      };
+      refreshAndFetch();
+    }, [])
+  );
+
   const formatFechaLegible = (fecha) => {
     const d = new Date(fecha);
     const dia = diasSemana[d.getDay()];
     const num = d.getDate();
     const mes = meses[d.getMonth()];
-    const anio = d.getFullYear();
     return `${dia.charAt(0).toUpperCase() + dia.slice(1)}, ${num} de ${
       mes.charAt(0).toUpperCase() + mes.slice(1)
-    } de ${anio}`;
+    } de ${d.getFullYear()}`;
   };
 
-  // 🔹 Cargar categorías y servicios iniciales
+  /** 📦 Cargar categorías */
   const fetchCategorias = async () => {
-    setLoading((prev) => ({ ...prev, categoria: true }));
+    setLoading((p) => ({ ...p, categoria: true }));
     try {
-      const { data } = await axiosClient.get("/get-categoria-servicio");
-      setCategoriaServicios(data);
+      const token = await AsyncStorage.getItem("ACCESS_TOKEN");
+      const { data } = await axiosClient.get("/gym/categorias", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      setCategoriaServicios(data);
       if (data.length > 0) {
         const primera = data[0];
         setSelectedCategoria(primera);
-
-        const serviciosRes = await axiosClient.get(
-          `/get-servicio-categoria-id/${primera.cat_id}`
-        );
-        setServicios(serviciosRes.data);
-
-        if (serviciosRes.data.length > 0) {
-          const servicioInicial = serviciosRes.data[0];
-          setSelectedService(servicioInicial);
-          fetchTurnos(new Date(), servicioInicial.ts_id);
-        }
+        await fetchServicios(primera.cat_id, token);
       }
-    } catch (error) {
-      alert("Error al cargar categorías");
+    } catch (e) {
+      console.error("❌ Error al cargar categorías:", e.response?.data || e);
     } finally {
-      setLoading((prev) => ({ ...prev, categoria: false }));
+      setLoading((p) => ({ ...p, categoria: false }));
     }
   };
 
-  const handleSelectCategoria = async (categoria) => {
-    setSelectedCategoria(categoria);
-    setMenuCategoriaVisible(false);
-    setLoading((prev) => ({ ...prev, servicio: true }));
-
+  /** ⚙️ Cargar servicios de una categoría */
+  const fetchServicios = async (categoriaId, tokenParam = null) => {
+    setLoading((p) => ({ ...p, servicio: true }));
     try {
-      const { data } = await axiosClient.get(
-        `/get-servicio-categoria-id/${categoria.cat_id}`
-      );
+      const token = tokenParam || (await AsyncStorage.getItem("ACCESS_TOKEN"));
+      const { data } = await axiosClient.get(`/gym/servicios/${categoriaId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setServicios(data);
       if (data.length > 0) {
-        setSelectedService(data[0]);
-        fetchTurnos(date, data[0].ts_id);
-      } else {
-        setSelectedService(null);
-        setTurnos([]);
+        const servicioInicial = data[0];
+        setSelectedService(servicioInicial);
+        await fetchTurnos(new Date(), servicioInicial.ts_id, token);
       }
-    } catch (error) {
-      alert("Error al cargar servicios");
+    } catch (e) {
+      console.error("❌ Error al cargar servicios:", e.response?.data || e);
     } finally {
-      setLoading((prev) => ({ ...prev, servicio: false }));
+      setLoading((p) => ({ ...p, servicio: false }));
     }
   };
 
-  const handleChangeFecha = (delta) => {
-    const nuevaFecha = new Date(date);
-    nuevaFecha.setDate(date.getDate() + delta);
-
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    if (nuevaFecha < hoy) return;
-
-    setDate(nuevaFecha);
-    if (selectedService) {
-      fetchTurnos(nuevaFecha, selectedService.ts_id);
-    }
-  };
-
-  const fetchTurnos = async (fecha, servicioId) => {
+  /** 🕒 Cargar turnos disponibles */
+  const fetchTurnos = async (fecha, servicioId, tokenParam = null) => {
     if (!servicioId) return;
-    setLoading((prev) => ({ ...prev, turnos: true }));
+    setLoading((p) => ({ ...p, turnos: true }));
+
     try {
-      const { data } = await axiosClient.get("/get-generar-turno", {
-        params: {
-          fecha: fecha.toISOString().split("T")[0],
-          servicio_id: servicioId,
-          estados_permitidos: [8],
-        },
+      const token = tokenParam || (await AsyncStorage.getItem("ACCESS_TOKEN"));
+      const fechaYMD = toLocalYMD(fecha); // ✅ LOCAL
+      const { data } = await axiosClient.get("/gym/turnos", {
+        params: { fecha: fechaYMD, servicio_id: servicioId },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setTurnos(data);
-    } catch (error) {
-      alert("Error al cargar turnos");
+
+      // 🔹 Si la fecha es hoy, filtrar turnos pasados
+      const ahora = new Date();
+      const esHoy = toLocalYMD(fecha) === toLocalYMD(ahora);
+
+      const turnosFiltrados = esHoy
+        ? data.filter((t) => {
+            const [hora, minuto] = t.hora_inicio.split(":").map(Number);
+            const horaTurno = new Date(fecha);
+            horaTurno.setHours(hora, minuto, 0, 0);
+            return horaTurno >= ahora;
+          })
+        : data;
+
+      setTurnos(turnosFiltrados);
+    } catch (e) {
+      console.error("❌ Error al cargar turnos:", e.response?.data || e);
     } finally {
-      setLoading((prev) => ({ ...prev, turnos: false }));
+      setLoading((p) => ({ ...p, turnos: false }));
     }
   };
 
-  // 🔹 Confirmación antes de reservar
-  const confirmarReserva = (turno) => {
+  /** 💾 Confirmar reserva */
+  const confirmarReserva = (turno) =>
     Alert.alert(
       "Confirmar reserva",
-      `¿Deseas reservar este turno?\n\n` +
-        `🏋️‍♀️ ${turno.servicio_nombre}\n📅 ${turno.fecha}\n🕒 ${turno.hora_inicio} - ${turno.hora_fin}\n👥 Cupos disponibles: ${turno.turnos_disponibles}`,
+      `¿Deseas reservar este turno?\n\n🏋️‍♀️ ${turno.servicio_nombre}\n📅 ${turno.fecha}\n🕒 ${turno.hora_inicio} - ${turno.hora_fin}`,
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: "Cancelar" },
         { text: "Reservar", onPress: () => handleReservar(turno) },
       ]
     );
-  };
 
-  // 🔹 Reservar turno con animación individual
   const handleReservar = async (turno) => {
-    setReservandoId(turno.tg_id_horario_gym); // solo este botón muestra loading
+    setReservandoId(turno.tg_id_horario_gym);
     try {
       const usuario_id = await AsyncStorage.getItem("USER_ID");
-      const formData = {
+      const payload = {
         p_usuario_id: Number(usuario_id),
         p_servicio_id: turno.servicio_id,
         p_horario_gym_id: turno.tg_id_horario_gym,
         p_fecha: turno.fecha,
         p_hora: turno.hora_inicio,
       };
-      const { data } = await axiosClient.post("/reservar-turno-gym", formData);
+
+      const { data } = await axiosClient.post("/gym/reservar-turno", payload);
+
       if (data.success) {
-        alert("✅ Turno reservado correctamente");
+        Alert.alert("✅ Turno reservado correctamente");
         fetchTurnos(date, selectedService?.ts_id);
       } else {
-        alert(data.message || "No se pudo reservar el turno");
+        const detalle = data?.detalle || data?.message;
+        if (detalle?.includes("uq_usuario_slot")) {
+          Alert.alert(
+            "⚠️ Ya tienes una reserva",
+            "No puedes reservar el mismo turno más de una vez."
+          );
+        } else {
+          Alert.alert("Error", detalle || "No se pudo reservar el turno.");
+        }
       }
-    } catch (error) {
-      alert("Error al reservar turno");
+    } catch (e) {
+      const detalle = e?.response?.data?.detalle || e?.message;
+      if (detalle?.includes("uq_usuario_slot")) {
+        Alert.alert("⚠️ Ya tienes una reserva", "Ya existe una reserva activa para ese horario.");
+      } else if (e.response?.status === 500) {
+        Alert.alert("Error interno", "Hubo un problema al procesar la reserva. Inténtalo más tarde.");
+      } else {
+        Alert.alert("Error", detalle || "No se pudo completar la reserva.");
+      }
+      console.warn("⚠️ Error al reservar turno:", detalle);
     } finally {
       setReservandoId(null);
     }
   };
+
+  /** ⏪⏩ Navegación de fechas con bloqueo de días anteriores */
+  const handleChangeFecha = (dias) => {
+    const nuevaFecha = new Date(date);
+    nuevaFecha.setDate(date.getDate() + dias);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    if (nuevaFecha < hoy) {
+      Alert.alert("⚠️ Fecha inválida", "No puedes seleccionar días anteriores a hoy.");
+      return;
+    }
+
+    setDate(nuevaFecha);
+    if (selectedService) fetchTurnos(nuevaFecha, selectedService.ts_id);
+  };
+
+  // ============================================================
+  // 📱 INTERFAZ
+  // ============================================================
+  const esHoy = toLocalYMD(date) === toLocalYMD(new Date());
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>🎯 Turnos Disponibles</Text>
 
-        {/* CATEGORÍA */}
+        {/* Categorías */}
         <Card style={styles.selectorCard}>
           <Text style={styles.label}>Categoría</Text>
           <Menu
@@ -214,9 +264,7 @@ const ReservarScreen = () => {
                 onPress={() => setMenuCategoriaVisible(true)}
               >
                 <Text style={styles.selectorText}>
-                  {selectedCategoria
-                    ? selectedCategoria.cat_nombre
-                    : "Seleccionar categoría"}
+                  {selectedCategoria?.cat_nombre || "Seleccionar categoría"}
                 </Text>
                 <Icon name="chevron-down" size={22} color={PRIMARY_COLOR} />
               </TouchableOpacity>
@@ -225,10 +273,14 @@ const ReservarScreen = () => {
             {loading.categoria ? (
               <ActivityIndicator color={PRIMARY_COLOR} style={{ margin: 10 }} />
             ) : (
-              categoriaServicios.map((cat) => (
+              categoriaServicios.map((cat, index) => (
                 <Menu.Item
-                  key={cat.cat_id}
-                  onPress={() => handleSelectCategoria(cat)}
+                  key={`${cat.cat_id}-${index}`}
+                  onPress={() => {
+                    setSelectedCategoria(cat);
+                    setMenuCategoriaVisible(false);
+                    fetchServicios(cat.cat_id);
+                  }}
                   title={cat.cat_nombre}
                 />
               ))
@@ -236,7 +288,7 @@ const ReservarScreen = () => {
           </Menu>
         </Card>
 
-        {/* SERVICIO */}
+        {/* Servicios */}
         <Card style={styles.selectorCard}>
           <Text style={styles.label}>Servicio</Text>
           <Menu
@@ -250,9 +302,7 @@ const ReservarScreen = () => {
                 }
               >
                 <Text style={styles.selectorText}>
-                  {selectedService
-                    ? selectedService.ts_nombre
-                    : "Seleccionar servicio"}
+                  {selectedService?.ts_nombre || "Seleccionar servicio"}
                 </Text>
                 <Icon name="chevron-down" size={22} color={PRIMARY_COLOR} />
               </TouchableOpacity>
@@ -261,9 +311,9 @@ const ReservarScreen = () => {
             {loading.servicio ? (
               <ActivityIndicator color={PRIMARY_COLOR} style={{ margin: 10 }} />
             ) : (
-              servicios.map((s) => (
+              servicios.map((s, index) => (
                 <Menu.Item
-                  key={s.ts_id}
+                  key={`${s.ts_id}-${index}`}
                   onPress={() => {
                     setSelectedService(s);
                     setMenuServicioVisible(false);
@@ -276,42 +326,37 @@ const ReservarScreen = () => {
           </Menu>
         </Card>
 
-        {/* FECHA CON FLECHAS */}
+        {/* Fecha */}
         <Card style={styles.selectorCard}>
           <Text style={styles.label}>Fecha</Text>
           <View style={styles.dateNav}>
             <TouchableOpacity
-              style={styles.arrowButton}
-              onPress={() => handleChangeFecha(-1)}
+              disabled={esHoy}
+              onPress={() => !esHoy && handleChangeFecha(-1)}
             >
-              <Icon name="chevron-left" size={28} color={PRIMARY_COLOR} />
+              <Icon
+                name="chevron-left"
+                size={28}
+                color={esHoy ? "#ccc" : PRIMARY_COLOR}
+              />
             </TouchableOpacity>
-
-            <Text style={styles.dateText}>
-              {date.toISOString().split("T")[0]}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.arrowButton}
-              onPress={() => handleChangeFecha(1)}
-            >
+            {/* ✅ Mostrar fecha local consistente */}
+            <Text style={styles.dateText}>{toLocalYMD(date)}</Text>
+            <TouchableOpacity onPress={() => handleChangeFecha(1)}>
               <Icon name="chevron-right" size={28} color={PRIMARY_COLOR} />
             </TouchableOpacity>
           </View>
-
-          <Text style={styles.fechaLegible}>
-            📅 {formatFechaLegible(date)}
-          </Text>
+          <Text style={styles.fechaLegible}>📅 {formatFechaLegible(date)}</Text>
         </Card>
 
-        {/* TURNOS DISPONIBLES */}
+        {/* Turnos */}
         {loading.turnos ? (
           <ActivityIndicator size="large" color={PRIMARY_COLOR} />
         ) : turnos.length === 0 ? (
           <Text style={styles.noTurnos}>No hay turnos disponibles.</Text>
         ) : (
-          turnos.map((t, i) => (
-            <Card key={i} style={styles.turnoCard}>
+          turnos.map((t, index) => (
+            <Card key={`${t.tg_id_horario_gym || index}-${index}`} style={styles.turnoCard}>
               <Card.Content>
                 <View style={styles.turnoHeader}>
                   <Text style={styles.turnoTitle}>{t.servicio_nombre}</Text>
@@ -321,11 +366,9 @@ const ReservarScreen = () => {
                     color={t.disponible ? "#2e7d32" : "#d32f2f"}
                   />
                 </View>
-
                 <Text style={styles.turnoInfo}>
-                  📅 {t.fecha}  |  🕒 {t.hora_inicio} - {t.hora_fin}
+                  📅 {t.fecha} | 🕒 {t.hora_inicio} - {t.hora_fin}
                 </Text>
-
                 <Text
                   style={[
                     styles.turnoDisponibilidad,
@@ -336,7 +379,6 @@ const ReservarScreen = () => {
                     ? `${t.turnos_disponibles} cupos disponibles`
                     : "No disponible"}
                 </Text>
-
                 <Button
                   mode="outlined"
                   icon="calendar-check"
@@ -360,6 +402,7 @@ const ReservarScreen = () => {
 
 export default ReservarScreen;
 
+/* 🎨 Estilos */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f7fa" },
   scrollContainer: { padding: 20, paddingBottom: 100 },
@@ -387,7 +430,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
   },
   selectorText: { fontSize: 15, color: "#333" },
   dateNav: {
@@ -397,25 +439,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    backgroundColor: "#fff",
     paddingVertical: 10,
     paddingHorizontal: 12,
   },
-  arrowButton: { padding: 5 },
   dateText: { color: "#333", fontSize: 15, fontWeight: "500" },
-  fechaLegible: {
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 14,
-    color: "#444",
-    fontStyle: "italic",
-  },
-  noTurnos: {
-    textAlign: "center",
-    color: "#555",
-    marginTop: 10,
-    fontSize: 14,
-  },
+  fechaLegible: { textAlign: "center", marginTop: 8, fontSize: 14, color: "#444" },
+  noTurnos: { textAlign: "center", color: "#555", marginTop: 10, fontSize: 14 },
   turnoCard: {
     marginBottom: 16,
     borderRadius: 14,

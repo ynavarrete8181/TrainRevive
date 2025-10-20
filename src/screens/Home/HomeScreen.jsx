@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { Card } from "react-native-paper";
 import { LineChart } from "react-native-chart-kit";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import estadisticasData from "../../data/estadisticasGym.json";
 
 const PRIMARY_COLOR = "#144985";
@@ -77,65 +76,67 @@ const HomeScreen = () => {
 
         {/* 🔹 Card de estadísticas */}
         <Card style={styles.statsCard}>
-          <Text style={styles.statsTitle}>📈 Mis estadísticas</Text>
+          <View>
+            <Text style={styles.statsTitle}>📈 Mis estadísticas</Text>
 
-          {loading ? (
-            <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-          ) : estadisticas ? (
-            <>
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statNumber}>{estadisticas.total_reservas}</Text>
-                  <Text style={styles.statLabel}>Reservas Totales</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={PRIMARY_COLOR} />
+            ) : estadisticas ? (
+              <View>
+                <View style={styles.statsRow}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{estadisticas.total_reservas}</Text>
+                    <Text style={styles.statLabel}>Reservas Totales</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{estadisticas.asistencias}</Text>
+                    <Text style={styles.statLabel}>Asistencias</Text>
+                  </View>
                 </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statNumber}>{estadisticas.asistencias}</Text>
-                  <Text style={styles.statLabel}>Asistencias</Text>
+
+                <View style={styles.statsRow}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{estadisticas.reservas_activas}</Text>
+                    <Text style={styles.statLabel}>Activas</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statNumber}>{estadisticas.canceladas}</Text>
+                    <Text style={styles.statLabel}>Canceladas</Text>
+                  </View>
                 </View>
+
+                <LineChart
+                  data={{
+                    labels: estadisticas.grafico_semanal.map((d) => d.dia),
+                    datasets: [
+                      { data: estadisticas.grafico_semanal.map((d) => d.asistencias) },
+                    ],
+                  }}
+                  width={screenWidth}
+                  height={180}
+                  yAxisLabel=""
+                  chartConfig={{
+                    backgroundColor: "#fff",
+                    backgroundGradientFrom: "#fff",
+                    backgroundGradientTo: "#fff",
+                    decimalPlaces: 0,
+                    color: () => PRIMARY_COLOR,
+                    labelColor: () => "#444",
+                    propsForDots: {
+                      r: "4",
+                      strokeWidth: "2",
+                      stroke: PRIMARY_COLOR,
+                    },
+                  }}
+                  style={{ marginTop: 10, borderRadius: 12 }}
+                />
               </View>
-
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statNumber}>{estadisticas.reservas_activas}</Text>
-                  <Text style={styles.statLabel}>Activas</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statNumber}>{estadisticas.canceladas}</Text>
-                  <Text style={styles.statLabel}>Canceladas</Text>
-                </View>
-              </View>
-
-              <LineChart
-                data={{
-                  labels: estadisticas.grafico_semanal.map((d) => d.dia),
-                  datasets: [
-                    { data: estadisticas.grafico_semanal.map((d) => d.asistencias) },
-                  ],
-                }}
-                width={screenWidth}
-                height={180}
-                yAxisLabel=""
-                chartConfig={{
-                  backgroundColor: "#fff",
-                  backgroundGradientFrom: "#fff",
-                  backgroundGradientTo: "#fff",
-                  decimalPlaces: 0,
-                  color: () => PRIMARY_COLOR,
-                  labelColor: () => "#444",
-                  propsForDots: {
-                    r: "4",
-                    strokeWidth: "2",
-                    stroke: PRIMARY_COLOR,
-                  },
-                }}
-                style={{ marginTop: 10, borderRadius: 12 }}
-              />
-            </>
-          ) : (
-            <Text style={{ textAlign: "center", color: "#888" }}>
-              No hay datos disponibles
-            </Text>
-          )}
+            ) : (
+              <Text style={{ textAlign: "center", color: "#888" }}>
+                No hay datos disponibles
+              </Text>
+            )}
+          </View>
         </Card>
       </ScrollView>
     </View>

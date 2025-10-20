@@ -11,35 +11,42 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
+const PRIMARY_COLOR = "rgba(20,73,133,1)";
+
 const MisReservasScreen = () => {
-  const [DataTurnosReservados, setDataTurnosReservados] = useState([]);
+  const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTurnosReservados = async () => {
+  /** 📦 Cargar reservas del usuario */
+  const fetchReservas = async () => {
     setLoading(true);
     try {
       const usuario_id = await AsyncStorage.getItem("USER_ID");
+      const token = await AsyncStorage.getItem("ACCESS_TOKEN");
 
-      if (!usuario_id) {
-        Alert.alert("Error", "No se encontró el usuario. Inicia sesión nuevamente.");
+      if (!usuario_id || !token) {
+        Alert.alert("Sesión expirada", "Inicia sesión nuevamente.");
         return;
       }
 
-      const { data } = await axiosClient.get(`/get-turno-gym-user-id/${usuario_id}`);
-      console.log("✅ Mis reservas:", data);
-      setDataTurnosReservados(data);
+      const { data } = await axiosClient.get(`/gym/turnos-usuario/${usuario_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setReservas(data || []);
     } catch (error) {
-      Alert.alert("¡Error!", "Error al cargar información: " + error.message);
+      console.error("❌ Error al obtener reservas:", error);
+      Alert.alert("Error", "No se pudieron cargar tus reservas.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTurnosReservados();
+    fetchReservas();
   }, []);
 
-  // 🔹 Formato bonito de fecha
+  /** 🔹 Formatear fecha */
   const formatFecha = (fecha) => {
     if (!fecha) return "";
     const f = new Date(fecha);
@@ -51,18 +58,22 @@ const MisReservasScreen = () => {
     });
   };
 
+  /** 🔹 Renderizar tarjeta de reserva */
   const renderItem = ({ item }) => {
     const estadoColor =
-      item.estado_nombre === "Atendido"
+      item.estado_nombre?.toLowerCase().includes("atendido")
         ? "#2e7d32"
-        : item.estado_nombre === "Separado"
+        : item.estado_nombre?.toLowerCase().includes("separado")
         ? "#f9a825"
-        : "#1976d2";
+        : item.estado_nombre?.toLowerCase().includes("cancelado")
+        ? "#d32f2f"
+        : PRIMARY_COLOR;
 
     return (
       <View style={styles.card}>
+        {/* Encabezado */}
         <View style={styles.cardHeader}>
-          <Text style={styles.titulo}>{item.ts_nombre}</Text>
+          <Text style={styles.titulo}>{item.ts_nombre || "Servicio"}</Text>
           {item.estado_nombre && (
             <View style={[styles.badge, { backgroundColor: estadoColor }]}>
               <Text style={styles.badgeText}>{item.estado_nombre}</Text>
@@ -70,44 +81,57 @@ const MisReservasScreen = () => {
           )}
         </View>
 
+        {/* Descripción */}
         {item.ts_descripcion && (
           <Text style={styles.descripcion}>{item.ts_descripcion}</Text>
         )}
 
+        {/* Fecha */}
         <View style={styles.infoRow}>
           <Icon name="calendar-outline" size={18} color="#444" />
           <Text style={styles.detalle}> {formatFecha(item.tg_fecha)}</Text>
         </View>
 
+        {/* Hora */}
         <View style={styles.infoRow}>
           <Icon name="clock-outline" size={18} color="#444" />
           <Text style={styles.detalle}>
             {" "}
-            {item.tg_hora_apertura || "—"}
+            {item.tg_hora
+              ? `${item.tg_hora.slice(0, 5)}`
+              : item.tg_hora_apertura || "—"}
           </Text>
+        </View>
+
+        {/* Servicio */}
+        <View style={styles.infoRow}>
+          <Icon name="dumbbell" size={18} color="#444" />
+          <Text style={styles.detalle}> {item.ts_descripcion || "—"}</Text>
         </View>
       </View>
     );
   };
 
+  /** 🔹 Cargando */
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="rgba(20,73,133,1)" />
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
       </View>
     );
   }
 
+  /** 🔹 Render principal */
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Mis Turnos</Text>
+      <Text style={styles.header}>🏋️‍♂️ Historial de Reservas</Text>
 
-      {DataTurnosReservados.length > 0 ? (
+      {reservas.length > 0 ? (
         <FlatList
-          data={DataTurnosReservados}
+          data={reservas}
           renderItem={renderItem}
-          keyExtractor={(item) => item.tg_id.toString()}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          keyExtractor={(item, index) => `${item.tg_id}-${index}`}
+          contentContainerStyle={{ paddingBottom: 30 }}
         />
       ) : (
         <Text style={styles.noData}>No tienes reservas registradas.</Text>
@@ -118,6 +142,7 @@ const MisReservasScreen = () => {
 
 export default MisReservasScreen;
 
+/* 🎨 Estilos */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -132,8 +157,9 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "rgba(20,73,133,1)",
+    color: PRIMARY_COLOR,
     marginBottom: 16,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#fff",
@@ -145,7 +171,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
     borderLeftWidth: 5,
-    borderLeftColor: "rgba(20,73,133,1)",
+    borderLeftColor: PRIMARY_COLOR,
   },
   cardHeader: {
     flexDirection: "row",
@@ -188,6 +214,7 @@ const styles = StyleSheet.create({
   noData: {
     textAlign: "center",
     color: "#777",
-    marginTop: 20,
+    marginTop: 40,
+    fontSize: 16,
   },
 });

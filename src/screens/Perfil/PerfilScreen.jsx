@@ -1,71 +1,153 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/Ionicons";
+import axiosClient from "../../screens/services/apiClient"; // ✅ Cliente Axios centralizado
+
+const PRIMARY_COLOR = "rgba(20,73,133,1)";
 
 const PerfilScreen = ({ setIsLoggedIn }) => {
-  const [DataUser, setDataUser] = useState(null);
+  const [dataUser, setDataUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const DataUsuario = async () => {
-      const id = await AsyncStorage.getItem("USER_ID");
-      const name = await AsyncStorage.getItem("name");
-      const foto = await AsyncStorage.getItem("foto_perfil");
-      if (id && name) {
-        setDataUser({ nombre: name, email: "usuario@ejemplo.com", foto });
+    const obtenerDatosUsuario = async () => {
+      try {
+        const token = await AsyncStorage.getItem("ACCESS_TOKEN");
+        if (!token) {
+          setIsLoggedIn(false);
+          return;
+        }
+
+        const response = await axiosClient.get("/gym/user-info", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.status === 200 && response.data.success) {
+          setDataUser(response.data);
+        } else {
+          throw new Error("No se pudieron cargar los datos del usuario.");
+        }
+      } catch (error) {
+        console.error("❌ Error cargando datos del usuario:", error.response?.status);
+
+        if (error.response?.status === 401) {
+          Alert.alert(
+            "Sesión expirada",
+            "Tu sesión ha caducado. Por favor, inicia sesión nuevamente."
+          );
+          setIsLoggedIn(false);
+        } else if (error.response?.status === 404) {
+          Alert.alert(
+            "Usuario no encontrado",
+            "No se encontraron tus datos en el sistema."
+          );
+        } else {
+          Alert.alert("Error", "Hubo un problema al cargar tu perfil.");
+        }
+      } finally {
+        setLoading(false);
       }
     };
-    DataUsuario();
+
+    obtenerDatosUsuario();
   }, []);
 
+  /** 🚪 Cerrar sesión */
   const handleLogout = () => {
-    Alert.alert(
-      "Cerrar sesión",
-      "¿Seguro que deseas salir?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Sí, salir",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem("ACCESS_TOKEN");
-              await AsyncStorage.removeItem("authToken");
-              await AsyncStorage.removeItem("USER_ID");
-              await AsyncStorage.removeItem("name");
-              await AsyncStorage.removeItem("foto_perfil");
-              setIsLoggedIn(false); // 🔥 vuelve automáticamente al login
-            } catch (error) {
-              console.error("Error al cerrar sesión:", error);
-            }
-          },
+    Alert.alert("Cerrar sesión", "¿Seguro que deseas salir?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sí, salir",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.multiRemove([
+            "ACCESS_TOKEN",
+            "REFRESH_TOKEN",
+            "USER_ID",
+            "name",
+            "foto_perfil",
+          ]);
+          setIsLoggedIn(false);
         },
-      ],
-      { cancelable: true }
-    );
+      },
+    ]);
   };
+
+  /** ⏳ Pantalla de carga */
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <Text style={{ color: "#777", marginTop: 10 }}>Cargando perfil...</Text>
+      </View>
+    );
+  }
+
+  /** 🧩 Datos principales */
+  const user = dataUser?.user || dataUser || {};
+  const persona = dataUser?.persona || {};
+  const detalles = dataUser?.detalles || {};
 
   return (
     <View style={styles.container}>
+      {/* 📸 Perfil */}
       <View style={styles.profileContainer}>
         <Image
           source={{
-            uri: DataUser?.foto || "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            uri:
+              persona?.imagen ||
+              "https://cdn-icons-png.flaticon.com/512/149/149071.png",
           }}
           style={styles.profileImage}
         />
-        <Text style={styles.nombre}>{DataUser?.nombre || "Usuario"}</Text>
-        <Text style={styles.email}>{DataUser?.email || "usuario@ejemplo.com"}</Text>
+        <Text style={styles.nombre}>{user?.name || "Usuario"}</Text>
+        <Text style={styles.email}>{user?.email || "Sin correo"}</Text>
+        <Text style={styles.tipoUsuario}>
+          {dataUser?.tipo_usuario || "Rol desconocido"}
+        </Text>
       </View>
 
+      {/* ℹ️ Info adicional */}
+      <View style={styles.infoCard}>
+        <Text style={styles.infoTitle}>Información adicional</Text>
+        {persona?.nombres && (
+          <Text style={styles.infoItem}>👤 {persona.nombres}</Text>
+        )}
+        {persona?.ciudad && (
+          <Text style={styles.infoItem}>🏙️ Ciudad: {persona.ciudad}</Text>
+        )}
+        {persona?.provincia && (
+          <Text style={styles.infoItem}>📍 Provincia: {persona.provincia}</Text>
+        )}
+        {detalles?.carrera && (
+          <Text style={styles.infoItem}>🎓 Carrera: {detalles.carrera}</Text>
+        )}
+        {detalles?.facultad && (
+          <Text style={styles.infoItem}>🏛️ Facultad: {detalles.facultad}</Text>
+        )}
+        {detalles?.campus && (
+          <Text style={styles.infoItem}>🏫 Campus: {detalles.campus}</Text>
+        )}
+      </View>
+
+      {/* ⚙️ Opciones */}
       <View style={styles.infoContainer}>
         <TouchableOpacity style={styles.option}>
-          <Icon name="settings-outline" size={22} color="rgba(20,73,133,1)" />
+          <Icon name="settings-outline" size={22} color={PRIMARY_COLOR} />
           <Text style={styles.optionText}>Configuración</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.option}>
-          <Icon name="help-circle-outline" size={22} color="rgba(20,73,133,1)" />
+          <Icon name="help-circle-outline" size={22} color={PRIMARY_COLOR} />
           <Text style={styles.optionText}>Ayuda</Text>
         </TouchableOpacity>
 
@@ -78,24 +160,32 @@ const PerfilScreen = ({ setIsLoggedIn }) => {
   );
 };
 
+export default PerfilScreen;
+
+/* 🎨 Estilos */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
     padding: 16,
   },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   profileContainer: {
     alignItems: "center",
     marginTop: 40,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: "rgba(20,73,133,1)",
+    borderColor: PRIMARY_COLOR,
   },
   nombre: {
     fontSize: 20,
@@ -107,8 +197,31 @@ const styles = StyleSheet.create({
     color: "#777",
     marginTop: 4,
   },
+  tipoUsuario: {
+    fontSize: 15,
+    color: PRIMARY_COLOR,
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  infoCard: {
+    backgroundColor: "#f8faff",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: PRIMARY_COLOR,
+    marginBottom: 10,
+  },
+  infoItem: {
+    fontSize: 14,
+    color: "#444",
+    marginVertical: 2,
+  },
   infoContainer: {
-    marginTop: 20,
+    marginTop: 10,
   },
   option: {
     flexDirection: "row",
@@ -127,7 +240,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 30,
-    backgroundColor: "rgba(20,73,133,1)",
+    backgroundColor: PRIMARY_COLOR,
     paddingVertical: 12,
     borderRadius: 10,
   },
@@ -138,5 +251,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
-export default PerfilScreen;
