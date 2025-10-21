@@ -1,4 +1,3 @@
-// services/apiClient.js
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
@@ -10,7 +9,7 @@ import Constants from "expo-constants";
 const API_BASE_URL =
   Constants.expoConfig?.extra?.apiUrl ||
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://servicesdbanu.uleam.edu.ec/dbanuproduccion";
+  "http://172.27.39.18:4000";
 
 console.log("API_BASE_URL:", API_BASE_URL);
 
@@ -32,9 +31,9 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("ACCESS_TOKEN");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const accessToken = await AsyncStorage.getItem("ACCESS_TOKEN");
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -59,8 +58,10 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem("REFRESH_TOKEN");
-        if (!refreshToken) {
+        // 🧩 Leer el REFRESH_TOKEN correcto del almacenamiento
+        const storedRefreshToken = await AsyncStorage.getItem("REFRESH_TOKEN");
+
+        if (!storedRefreshToken) {
           console.warn("⚠️ No hay refresh token, cerrando sesión...");
           await AsyncStorage.multiRemove(["ACCESS_TOKEN", "REFRESH_TOKEN"]);
           throw error;
@@ -68,30 +69,36 @@ apiClient.interceptors.response.use(
 
         console.log("♻️ Renovando token automáticamente...");
 
+        // 🚀 Petición de renovación con el refresh token
         const { data } = await axios.post(
           `${API_BASE_URL}/api/refresh-token`,
           {},
           {
-            headers: { Authorization: `Bearer ${refreshToken}` },
+            headers: {
+              Authorization: `Bearer ${storedRefreshToken}`, // ✅ Aquí va el REFRESH TOKEN
+            },
           }
         );
 
         const newAccessToken =
           data?.access_token || data?.token || data?.accessToken;
+        const newRefreshToken =
+          data?.refresh_token || data?.refreshToken || null;
+
         if (!newAccessToken) {
           console.warn("⚠️ Respuesta inválida al renovar token:", data);
           throw error;
         }
 
-        // Guardar nuevos tokens
+        // 💾 Guardar nuevos tokens
         await AsyncStorage.setItem("ACCESS_TOKEN", newAccessToken);
-        if (data.refresh_token) {
-          await AsyncStorage.setItem("REFRESH_TOKEN", data.refresh_token);
+        if (newRefreshToken) {
+          await AsyncStorage.setItem("REFRESH_TOKEN", newRefreshToken);
         }
 
         console.log("✅ Token renovado correctamente");
 
-        // Reintentar la solicitud original
+        // Reintentar la solicitud original con el nuevo token
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
