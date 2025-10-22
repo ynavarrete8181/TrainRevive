@@ -2,14 +2,14 @@
   "expo": {
     "name": "GYM Uleam",
     "slug": "TrainRevive",
-    "version": "1.2.0", 
+    "version": "1.5.0", 
     "orientation": "portrait",
-    "icon": "./assets/uleam-ico.png",
+    "icon": "./assets/uleam-ico2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
 
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/uleam-ico2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.uleam.edu.ec.GymUleam",
-      "buildNumber": "3", 
+      "buildNumber": "5", 
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -35,9 +35,9 @@
 
     "android": {
       "package": "com.uleam.edu.ec.GymUleam",
-      "versionCode": 2, 
+      "versionCode": 5, 
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/uleam-ico.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -54,8 +54,8 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "http",
-              "host": "172.27.39.18:4000",
+              "scheme": "https",
+              "host": "dbanu.appgoturno.online",
               "pathPrefix": "/"
             }
           ],
@@ -65,11 +65,11 @@
     },
 
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/uleam-ico.png"
     },
 
     "extra": {
-      "apiUrl": "http://172.27.39.18:4000",
+      "apiUrl": "https://dbanu.appgoturno.online",
       "eas": {
         "projectId": "fbc17897-48e5-48ce-8012-feeceb288f73"
       }

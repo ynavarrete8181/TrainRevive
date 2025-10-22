@@ -1,3 +1,4 @@
+// src/components/NavBar.jsx
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { FontAwesome5 } from "@expo/vector-icons";
@@ -11,7 +12,7 @@ import PerfilScreen from "../screens/Perfil/PerfilScreen";
 
 const Tab = createBottomTabNavigator();
 
-const NavBar = () => {
+const NavBar = ({ setIsLoggedIn }) => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -79,9 +80,10 @@ const NavBar = () => {
         options={{ title: "Mis Turnos" }}
       />
 
+      {/* 👇 Aquí pasamos correctamente la función */}
       <Tab.Screen
         name="Perfil"
-        component={PerfilScreen}
+        children={(props) => <PerfilScreen {...props} setIsLoggedIn={setIsLoggedIn} />}
         options={{ title: "Perfil" }}
       />
     </Tab.Navigator>

@@ -2,24 +2,30 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
+  FlatList,
   ActivityIndicator,
+  StatusBar,
+  Platform,
+  TouchableOpacity,
   Alert,
+  RefreshControl,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-const PRIMARY_COLOR = "rgba(20,73,133,1)";
+const PRIMARY_COLOR = "#144985";
 
 const MisReservasScreen = () => {
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   /** 📦 Cargar reservas del usuario */
-  const fetchReservas = async () => {
-    setLoading(true);
+  const fetchReservas = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     try {
       const usuario_id = await AsyncStorage.getItem("USER_ID");
       const token = await AsyncStorage.getItem("ACCESS_TOKEN");
@@ -33,18 +39,43 @@ const MisReservasScreen = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setReservas(data || []);
+      if (data && Array.isArray(data)) {
+        // 🧩 Ordenar: fecha DESC y hora ASC
+        const ordenadas = data.sort((a, b) => {
+          const fechaA = new Date(a.tg_fecha);
+          const fechaB = new Date(b.tg_fecha);
+
+          if (fechaA.getTime() !== fechaB.getTime()) {
+            return fechaB - fechaA; // Fecha descendente
+          }
+
+          const horaA = a.tg_hora ? a.tg_hora.slice(0, 5) : "00:00";
+          const horaB = b.tg_hora ? b.tg_hora.slice(0, 5) : "00:00";
+          return horaA.localeCompare(horaB); // Hora ascendente
+        });
+
+        setReservas(ordenadas);
+      } else {
+        setReservas([]);
+      }
     } catch (error) {
       console.error("❌ Error al obtener reservas:", error);
       Alert.alert("Error", "No se pudieron cargar tus reservas.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchReservas();
   }, []);
+
+  /** 🔄 Refrescar al deslizar hacia abajo */
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchReservas(true);
+  };
 
   /** 🔹 Formatear fecha */
   const formatFecha = (fecha) => {
@@ -58,84 +89,195 @@ const MisReservasScreen = () => {
     });
   };
 
-  /** 🔹 Renderizar tarjeta de reserva */
+  /** 🎨 Render de tarjeta */
   const renderItem = ({ item }) => {
-    const estadoColor =
-      item.estado_nombre?.toLowerCase().includes("atendido")
+    const estadoNombre = item.estado_nombre || "Pendiente";
+    const estado = estadoNombre.toLowerCase();
+    const color =
+      estado.includes("atendido")
         ? "#2e7d32"
-        : item.estado_nombre?.toLowerCase().includes("separado")
+        : estado.includes("separado")
         ? "#f9a825"
-        : item.estado_nombre?.toLowerCase().includes("cancelado")
+        : estado.includes("cancelado")
         ? "#d32f2f"
         : PRIMARY_COLOR;
 
     return (
-      <View style={styles.card}>
-        {/* Encabezado */}
+      <View
+        style={[
+          styles.card,
+          isDark ? styles.cardDark : styles.cardLight,
+          { borderLeftColor: color },
+        ]}
+      >
+        {/* Cabecera */}
         <View style={styles.cardHeader}>
-          <Text style={styles.titulo}>{item.ts_nombre || "Servicio"}</Text>
-          {item.estado_nombre && (
-            <View style={[styles.badge, { backgroundColor: estadoColor }]}>
-              <Text style={styles.badgeText}>{item.estado_nombre}</Text>
-            </View>
-          )}
+          <View style={styles.cardTitleWrap}>
+            <Icon
+              name="dumbbell"
+              size={18}
+              color={isDark ? "#9ad1ff" : PRIMARY_COLOR}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.cardTitle,
+                isDark ? styles.textWhite : styles.textDarkInk,
+              ]}
+            >
+              {item.ts_nombre || "Servicio"}
+            </Text>
+          </View>
+
+          <View style={[styles.badge, { backgroundColor: color }]}>
+            <Text style={styles.badgeText}>{estadoNombre}</Text>
+          </View>
         </View>
 
         {/* Descripción */}
         {item.ts_descripcion && (
-          <Text style={styles.descripcion}>{item.ts_descripcion}</Text>
+          <Text
+            style={[
+              styles.cardDesc,
+              isDark ? styles.textSoftDark : styles.textSoft,
+            ]}
+          >
+            {item.ts_descripcion}
+          </Text>
         )}
 
-        {/* Fecha */}
+        {/* Datos */}
         <View style={styles.infoRow}>
-          <Icon name="calendar-outline" size={18} color="#444" />
-          <Text style={styles.detalle}> {formatFecha(item.tg_fecha)}</Text>
-        </View>
-
-        {/* Hora */}
-        <View style={styles.infoRow}>
-          <Icon name="clock-outline" size={18} color="#444" />
-          <Text style={styles.detalle}>
+          <Icon name="calendar-outline" size={17} color={isDark ? "#a0aec0" : "#555"} />
+          <Text style={[styles.infoText, isDark && styles.textSoftDark]}>
             {" "}
-            {item.tg_hora
-              ? `${item.tg_hora.slice(0, 5)}`
-              : item.tg_hora_apertura || "—"}
+            {formatFecha(item.tg_fecha)}
           </Text>
         </View>
 
-        {/* Servicio */}
         <View style={styles.infoRow}>
-          <Icon name="dumbbell" size={18} color="#444" />
-          <Text style={styles.detalle}> {item.ts_descripcion || "—"}</Text>
+          <Icon name="clock-outline" size={17} color={isDark ? "#a0aec0" : "#555"} />
+          <Text style={[styles.infoText, isDark && styles.textSoftDark]}>
+            {" "}
+            {item.tg_hora || "—"}
+          </Text>
         </View>
       </View>
     );
   };
 
-  /** 🔹 Cargando */
+  /** ⏳ Cargando inicial */
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
+      <View
+        style={[
+          styles.loaderContainer,
+          isDark && { backgroundColor: "#0f1115" },
+        ]}
+      >
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <Text style={[styles.loadingText, isDark && styles.textSoftDark]}>
+          Cargando tus reservas...
+        </Text>
       </View>
     );
   }
 
-  /** 🔹 Render principal */
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>🏋️‍♂️ Historial de Reservas</Text>
+    <View
+      style={[
+        styles.safeArea,
+        isDark && { backgroundColor: "#0f1115" },
+      ]}
+    >
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={isDark ? "#0f1115" : "#ffffff"}
+      />
 
+      {/* Header */}
+      <View style={[styles.hero, isDark ? styles.heroDark : styles.heroLight]}>
+        <View style={styles.heroRow}>
+          <View
+            style={[
+              styles.heroBadge,
+              isDark && styles.heroBadgeDark,
+            ]}
+          >
+            <Icon
+              name="calendar-check-outline"
+              size={18}
+              color={isDark ? "#9ad1ff" : PRIMARY_COLOR}
+            />
+          </View>
+          <Text
+            style={[styles.title, isDark ? styles.textWhite : styles.textDarkInk]}
+          >
+            Mis Reservas
+          </Text>
+        </View>
+        <Text
+          style={[styles.subtitle, isDark ? styles.textSoftDark : styles.textSoft]}
+        >
+          Consulta tus turnos registrados y su estado.
+        </Text>
+      </View>
+
+      {/* Contenido principal con pull-to-refresh */}
       {reservas.length > 0 ? (
         <FlatList
           data={reservas}
           renderItem={renderItem}
-          keyExtractor={(item, index) => `${item.tg_id}-${index}`}
-          contentContainerStyle={{ paddingBottom: 30 }}
+          keyExtractor={(item, i) => `${item.tg_id}-${i}`}
+          contentContainerStyle={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[PRIMARY_COLOR]}
+              tintColor={PRIMARY_COLOR}
+              title="Actualizando..."
+              titleColor={isDark ? "#fff" : PRIMARY_COLOR}
+            />
+          }
         />
       ) : (
-        <Text style={styles.noData}>No tienes reservas registradas.</Text>
+        <View style={styles.emptyBox}>
+          <Icon
+            name="calendar-remove-outline"
+            size={64}
+            color={isDark ? "#6b7280" : "#9e9e9e"}
+          />
+          <Text
+            style={[
+              styles.noDataText,
+              isDark ? styles.textSoftDark : styles.textSoft,
+            ]}
+          >
+            No tienes reservas registradas.
+          </Text>
+        </View>
       )}
+
+      {/* Botón modo oscuro */}
+      <TouchableOpacity
+        style={styles.themeToggle}
+        onPress={() => setIsDark(!isDark)}
+      >
+        <Icon
+          name={isDark ? "weather-sunny" : "weather-night"}
+          size={20}
+          color={isDark ? "#ffcc80" : "#1f6feb"}
+        />
+        <Text
+          style={[
+            styles.themeToggleText,
+            isDark ? styles.textSoftDark : styles.textDarkInk,
+          ]}
+        >
+          {isDark ? "Modo claro" : "Modo oscuro"}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -144,62 +286,48 @@ export default MisReservasScreen;
 
 /* 🎨 Estilos */
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: "#f5f7fb",
-    padding: 16,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
-  loaderContainer: {
-    flex: 1,
+  hero: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+  heroLight: { backgroundColor: "#ffffff", borderColor: "#eef1f4" },
+  heroDark: { backgroundColor: "#0f1115", borderColor: "#171a21" },
+  heroRow: { flexDirection: "row", alignItems: "center" },
+  heroBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "rgba(39, 174, 96, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(39, 174, 96, 0.25)",
+    marginRight: 10,
   },
-  header: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: PRIMARY_COLOR,
-    marginBottom: 16,
-    textAlign: "center",
+  heroBadgeDark: {
+    backgroundColor: "rgba(165, 214, 167, 0.12)",
+    borderColor: "rgba(165, 214, 167, 0.25)",
   },
+  title: { fontSize: 22, fontWeight: "800" },
+  subtitle: { marginTop: 6, fontSize: 13 },
+  container: { padding: 16 },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
     borderLeftWidth: 5,
-    borderLeftColor: PRIMARY_COLOR,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  titulo: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#222",
-    flex: 1,
-    marginRight: 8,
-  },
-  descripcion: {
-    fontSize: 13,
-    color: "#555",
-    marginBottom: 8,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 2,
-  },
-  detalle: {
-    fontSize: 14,
-    color: "#444",
-  },
+  cardLight: { backgroundColor: "#ffffff", borderColor: "#eef1f4" },
+  cardDark: { backgroundColor: "#0f131a", borderColor: "#1a2230" },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardTitleWrap: { flexDirection: "row", alignItems: "center", flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: "700" },
+  cardDesc: { marginTop: 4, marginBottom: 10, fontSize: 13.5, lineHeight: 18 },
+  infoRow: { flexDirection: "row", alignItems: "center", marginVertical: 2 },
+  infoText: { fontSize: 13.5, marginLeft: 5 },
   badge: {
     borderRadius: 20,
     paddingVertical: 3,
@@ -208,13 +336,23 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 12,
+    fontSize: 11,
     textTransform: "uppercase",
   },
-  noData: {
-    textAlign: "center",
-    color: "#777",
-    marginTop: 40,
-    fontSize: 16,
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 8, fontSize: 14 },
+  emptyBox: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
+  noDataText: { fontSize: 15, marginTop: 10 },
+  themeToggle: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+    marginBottom: 12,
   },
+  themeToggleText: { marginLeft: 8, fontSize: 14, fontWeight: "600" },
+  textWhite: { color: "#ffffff" },
+  textDarkInk: { color: "#1f3a5f" },
+  textSoft: { color: "#6b7a90" },
+  textSoftDark: { color: "#a0aec0" },
 });

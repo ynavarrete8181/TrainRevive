@@ -9,7 +9,7 @@ import Constants from "expo-constants";
 const API_BASE_URL =
   Constants.expoConfig?.extra?.apiUrl ||
   process.env.EXPO_PUBLIC_API_URL ||
-  "http://172.27.39.18:4000";
+  "https://dbanu.appgoturno.online";
 
 console.log("API_BASE_URL:", API_BASE_URL);
 
