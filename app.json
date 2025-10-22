@@ -37,8 +37,9 @@
       "package": "com.uleam.edu.ec.GymUleam",
       "versionCode": 5, 
       "adaptiveIcon": {
-        "foregroundImage": "./assets/uleam-ico.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/uleam-ico2.png",
+        "backgroundColor": "#ffffff",
+        "monochromeImage": "./assets/uleam-ico.png"
       },
       "permissions": [
         "INTERNET",

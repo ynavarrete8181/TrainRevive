@@ -12,6 +12,7 @@ import NavBar from "./src/components/NavBar";
 import LoginSelectorScreen from "./src/screens/Auth/LoginSelectorScreen";
 import LoginMicrosoftScreen from "./src/screens/Auth/LoginMicrosoftScreen";
 import LoginScreen from "./src/screens/Auth/LoginScreen";
+import LoginMicrosoft from "./src/screens/Auth/LoginMicrosoft";
 
 const Stack = createStackNavigator();
 
@@ -77,7 +78,7 @@ export default function App() {
               <Stack.Screen
                 name="LoginMicrosoft"
                 children={(props) => (
-                  <LoginMicrosoftScreen {...props} setIsLoggedIn={setIsLoggedIn} />
+                  <LoginMicrosoft {...props} setIsLoggedIn={setIsLoggedIn} />
                 )}
               />
               <Stack.Screen
