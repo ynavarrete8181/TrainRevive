@@ -26,7 +26,7 @@ const ERROR_COLOR = "#d32f2f";
 const BG_COLOR = "#f5f7fb";
 
 const diasSemana = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 const toLocalYMD = (d) => {
   const y = d.getFullYear();
@@ -128,10 +128,13 @@ const ReservarScreen = () => {
 
       // Si no tiene turno, mostrar los disponibles
       const fechaYMD = toLocalYMD(fecha);
+      const tipoUsuario = await AsyncStorage.getItem("USER_TIPO"); // 👈 recupera tipo
+
       const { data } = await axiosClient.get("/gym/turnos", {
-        params: { fecha: fechaYMD, servicio_id: servicioId },
+        params: { fecha: fechaYMD, servicio_id: servicioId, tipo_usuario: tipoUsuario },
         headers: { Authorization: `Bearer ${token}` },
       });
+
 
       // Filtrar turnos de hora actual hacia adelante
       const ahora = new Date();
@@ -293,7 +296,7 @@ const ReservarScreen = () => {
           <ActivityIndicator color={PRIMARY_COLOR} size="large" style={{ marginTop: 20 }} />
         ) : tieneTurnoDia ? (
           <Text style={styles.mensajeBloqueo}>
-            ⚠️ Ya tienes un turno reservado para este día.  
+            ⚠️ Ya tienes un turno reservado para este día.
             Podrás reservar nuevamente en fechas posteriores.
           </Text>
         ) : turnos.length === 0 ? (

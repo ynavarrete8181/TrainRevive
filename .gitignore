@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+package-lock.json
+yarn.lock
+
+# Compilaciones Android / iOS
+android/.gradle/
+android/app/build/
+android/build/
+ios/Pods/
+ios/build/
+
+# Archivos temporales
+*.keystore
+*.jks
+*.p8
+*.pem
+*.p12
+*.mobileprovision
+
+# Cache
+.expo/
+.expo-shared/
+web-build/
+dist/
+build/
+
+# Configs locales
+.env
+*.log
+*.tmp
+.DS_Store

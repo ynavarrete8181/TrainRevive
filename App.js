@@ -4,6 +4,8 @@ import { Provider as PaperProvider } from "react-native-paper";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
 
 // 🧩 Componentes principales
 import NavBar from "./src/components/NavBar";
@@ -12,6 +14,7 @@ import NavBar from "./src/components/NavBar";
 import LoginSelectorScreen from "./src/screens/Auth/LoginSelectorScreen";
 import LoginMicrosoftScreen from "./src/screens/Auth/LoginMicrosoftScreen";
 import LoginScreen from "./src/screens/Auth/LoginScreen";
+import LoginMicrosoft from "./src/screens/Auth/LoginMicrosoft";
 
 const Stack = createStackNavigator();
 
@@ -59,6 +62,7 @@ export default function App() {
   // 🌐 Navegación principal
   return (
     <PaperProvider>
+      <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {isLoggedIn ? (
@@ -89,6 +93,7 @@ export default function App() {
           )}
         </Stack.Navigator>
       </NavigationContainer>
+      </SafeAreaProvider>
     </PaperProvider>
   );
 }

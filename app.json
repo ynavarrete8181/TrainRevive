@@ -4,12 +4,12 @@
     "slug": "TrainRevive",
     "version": "1.5.0", 
     "orientation": "portrait",
-    "icon": "./assets/uleam-ico2.png",
+    "icon": "./assets/uleam-ico3.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
 
     "splash": {
-      "image": "./assets/uleam-ico2.png",
+      "image": "./assets/uleam-ico3.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -37,8 +37,9 @@
       "package": "com.uleam.edu.ec.GymUleam",
       "versionCode": 5, 
       "adaptiveIcon": {
-        "foregroundImage": "./assets/uleam-ico.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/uleam-ico3.png",
+        "backgroundColor": "#ffffff",
+        "monochromeImage": "./assets/uleam-ico3.png"
       },
       "permissions": [
         "INTERNET",
@@ -65,7 +66,7 @@
     },
 
     "web": {
-      "favicon": "./assets/uleam-ico.png"
+      "favicon": "./assets/uleam-ico3.png"
     },
 
     "extra": {

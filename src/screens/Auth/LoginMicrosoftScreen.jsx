@@ -66,7 +66,7 @@ export default function LoginMicrosoftScreen({ navigation, route, setIsLoggedIn 
         Alert.alert(
           "Acceso denegado",
           data.message ||
-            "No se encuentra el dato consultado. Verifique que esté correcto y vuelva a intentarlo."
+          "No se encuentra el dato consultado. Verifique que esté correcto y vuelva a intentarlo."
         );
         return;
       }
@@ -78,7 +78,9 @@ export default function LoginMicrosoftScreen({ navigation, route, setIsLoggedIn 
         ["USER_NAME", data.user.name],
         ["USER_EMAIL", data.user.email],
         ["USER_ROL", data.rol],
+        ["USER_TIPO", type === "estudiante" ? "1" : "2"], // 👈 guarda 1=estudiante, 2=personal
       ]);
+
 
       console.log("✅ Login correcto:", data.user);
 
