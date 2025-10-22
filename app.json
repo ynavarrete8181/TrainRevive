@@ -70,7 +70,7 @@
     },
 
     "extra": {
-      "apiUrl": "https://dbanu.appgoturno.online",
+      "apiUrl": "http://172.27.39.9:8000",
       "eas": {
         "projectId": "fbc17897-48e5-48ce-8012-feeceb288f73"
       }
