@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicat
 import * as AuthSession from "expo-auth-session";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { microsoftConfig } from "../config/ConfigMicrosoft";
+// import { microsoftConfig } from "../config/ConfigMicrosoft";
+import { config as microsoftConfig } from "../config/ConfigMicrosoft";
 import axiosClient from "../../screens/services/apiClient";
 
 const LoginMicrosoft = ({ navigation, setIsLoggedIn }) => {
