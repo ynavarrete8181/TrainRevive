@@ -81,7 +81,7 @@ export default function App() {
               <Stack.Screen
                 name="LoginMicrosoft"
                 children={(props) => (
-                  <LoginMicrosoftScreen {...props} setIsLoggedIn={setIsLoggedIn} />
+                  <LoginMicrosoft {...props} setIsLoggedIn={setIsLoggedIn} />
                 )}
               />
               <Stack.Screen
