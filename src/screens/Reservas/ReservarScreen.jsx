@@ -26,7 +26,7 @@ const ERROR_COLOR = "#d32f2f";
 const BG_COLOR = "#f5f7fb";
 
 const diasSemana = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 const toLocalYMD = (d) => {
   const y = d.getFullYear();
@@ -52,6 +52,8 @@ const ReservarScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null);
 
+  const [TipoUsuario, setTipoUsuario] = useState(null);
+
   // Animación ícono cargando
   const spinValue = new Animated.Value(0);
   Animated.loop(
@@ -67,12 +69,31 @@ const ReservarScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const loadInit = async () => {
-        await fetchCategorias();
-        setLoadingGlobal(false);
+        try {
+          const tipo = await AsyncStorage.getItem("USER_ROL");
+          console.log("🔹 Tipo de usuario cargado:", tipo);
+          setTipoUsuario(tipo);
+
+          await fetchCategorias();
+        } catch (e) {
+          console.log("Error cargando tipo usuario:", e);
+        } finally {
+          setLoadingGlobal(false);
+        }
       };
       loadInit();
     }, [])
   );
+
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     const loadInit = async () => {
+  //       await fetchCategorias();
+  //       setLoadingGlobal(false);
+  //     };
+  //     loadInit();
+  //   }, [])
+  // );
 
   const fetchCategorias = async () => {
     try {
@@ -122,16 +143,30 @@ const ReservarScreen = () => {
 
       setTieneTurnoDia(yaTiene);
       if (yaTiene) {
-        setTurnos([]); // limpiar lista
+        setTurnos([]);
         return;
       }
 
       // Si no tiene turno, mostrar los disponibles
       const fechaYMD = toLocalYMD(fecha);
+      const usr_tipo = TipoUsuario || (await AsyncStorage.getItem("USER_ROL"));
+
+      console.log("Tipo usuario:", usr_tipo);
+
+      // if (!usr_tipo) {
+      //   console.log("⏳ Esperando tipo_usuario antes de verificar turnos...");
+      //   return;
+      // }
+
       const { data } = await axiosClient.get("/gym/turnos", {
-        params: { fecha: fechaYMD, servicio_id: servicioId },
+        params: {
+          fecha: fechaYMD,
+          servicio_id: servicioId,
+          tipo_usuario: usr_tipo
+        },
         headers: { Authorization: `Bearer ${token}` },
       });
+
 
       // Filtrar turnos de hora actual hacia adelante
       const ahora = new Date();
@@ -148,7 +183,6 @@ const ReservarScreen = () => {
     }
   };
 
-  /** ⏩ Navegar entre fechas */
   const handleChangeFecha = (dias) => {
     const nueva = new Date(date);
     nueva.setDate(date.getDate() + dias);
@@ -165,24 +199,26 @@ const ReservarScreen = () => {
     if (selectedServicio) verificarTurnoYMostrar(nueva, selectedServicio.ts_id);
   };
 
-  /** 💾 Reservar turno */
   const handleReservar = async (turno) => {
     setReservandoId(turno.tg_id_horario_gym);
     try {
       const usuario_id = await AsyncStorage.getItem("USER_ID");
+
       const payload = {
         p_usuario_id: Number(usuario_id),
         p_servicio_id: turno.servicio_id,
         p_horario_gym_id: turno.tg_id_horario_gym,
         p_fecha: turno.fecha,
-        p_hora: turno.hora_inicio,
+        p_hora: turno.hora_inicio
       };
+
+      console.log("Payload reserva:", payload);
       const { data } = await axiosClient.post("/gym/reservar-turno", payload);
       if (data.success) {
-        Alert.alert("✅ Éxito", "Turno reservado correctamente.");
+        Alert.alert("Éxito", "Turno reservado correctamente.");
         verificarTurnoYMostrar(date, selectedServicio?.ts_id);
       } else {
-        Alert.alert("⚠️ No se pudo reservar", data.message || "Intenta nuevamente.");
+        Alert.alert("No se pudo reservar", data.message || "Intenta nuevamente.");
       }
     } catch (e) {
       Alert.alert("Error", e.message);
@@ -212,7 +248,6 @@ const ReservarScreen = () => {
     <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
         <View style={styles.hero}>
           <View style={styles.heroRow}>
             <View style={styles.heroBadge}>
@@ -223,7 +258,6 @@ const ReservarScreen = () => {
           <Text style={styles.subtitle}>Selecciona categoría, servicio y fecha.</Text>
         </View>
 
-        {/* Selects */}
         <View style={styles.group}>
           <Text style={styles.label}>Categoría</Text>
           <Menu
@@ -288,12 +322,11 @@ const ReservarScreen = () => {
           </View>
         </View>
 
-        {/* Resultado */}
         {loadingTurnos ? (
           <ActivityIndicator color={PRIMARY_COLOR} size="large" style={{ marginTop: 20 }} />
         ) : tieneTurnoDia ? (
           <Text style={styles.mensajeBloqueo}>
-            ⚠️ Ya tienes un turno reservado para este día.  
+            ⚠️ Ya tienes un turno reservado para este día.
             Podrás reservar nuevamente en fechas posteriores.
           </Text>
         ) : turnos.length === 0 ? (

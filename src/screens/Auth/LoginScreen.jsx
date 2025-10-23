@@ -24,18 +24,30 @@ const LoginScreen = ({ navigation, setIsLoggedIn }) => {
     try {
       setLoading(true);
       const response = await axiosClient.post("/login", credentials);
+      console.log("Respuesta del login:", response.data);
 
       if (response.data.message === "El usuario no está activo.") {
         Alert.alert("Usuario inactivo", "Comuníquese con el administrador.");
         return;
       }
 
-      await AsyncStorage.setItem("ACCESS_TOKEN", response.data.token);
-      await AsyncStorage.setItem("USER_ID", String(response.data.id));
-      await AsyncStorage.setItem("foto_perfil", String(response.data.foto_perfil));
-      await AsyncStorage.setItem("name", String(response.data.name));
+      // await AsyncStorage.setItem("ACCESS_TOKEN", response.data.token);
+      // await AsyncStorage.setItem("USER_ID", String(response.data.id));
+      // await AsyncStorage.setItem("foto_perfil", String(response.data.foto_perfil));
+      // await AsyncStorage.setItem("name", String(response.data.name));
+      // await AsyncStorage.setItem("USER_TYPE", String(response.data.usr_tipo));
+      await AsyncStorage.multiSet([
+        ["ACCESS_TOKEN", response.data.token],
+        ["USER_ID", String(response.data.id)],
+        ["foto_perfil", String(response.data.foto_perfil)],
+        ["name", String(response.data.name)],
+        ["USER_TYPE", String(response.data.usr_tipo)], // 👈 importante: coincide con backend
+      ]);
+
+      console.log("🔹 Tipo de usuario actualizado:", response.data.usr_tipo);
 
       console.log("Login exitoso:", response.data);
+
       setIsLoggedIn(true);
     } catch (error) {
       console.log("Error completo:", error);
