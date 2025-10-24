@@ -2,6 +2,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopBar from "./TopBar";
 
 // 🧩 Pantallas principales
@@ -13,13 +14,14 @@ import PerfilScreen from "../screens/Perfil/PerfilScreen";
 const Tab = createBottomTabNavigator();
 
 const NavBar = ({ setIsLoggedIn }) => {
+  const insets = useSafeAreaInsets(); // 👈 márgenes seguros
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         header: ({ navigation }) => <TopBar navigation={navigation} />,
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
-
           switch (route.name) {
             case "Inicio":
               iconName = "home";
@@ -36,7 +38,6 @@ const NavBar = ({ setIsLoggedIn }) => {
             default:
               iconName = "circle";
           }
-
           return (
             <FontAwesome5
               name={iconName}
@@ -49,8 +50,8 @@ const NavBar = ({ setIsLoggedIn }) => {
         tabBarActiveTintColor: "rgba(20,73,133,1)",
         tabBarInactiveTintColor: "gray",
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 6,
+          height: 60 + insets.bottom, // 👈 se ajusta automáticamente
+          paddingBottom: insets.bottom > 0 ? insets.bottom / 2 : 6,
           borderTopWidth: 0.5,
           borderTopColor: "#ddd",
           backgroundColor: "#fff",
@@ -67,23 +68,21 @@ const NavBar = ({ setIsLoggedIn }) => {
         component={HomeScreen}
         options={{ title: "Inicio" }}
       />
-
       <Tab.Screen
         name="Agendar"
         component={ReservarScreen}
         options={{ title: "Agendar" }}
       />
-
       <Tab.Screen
         name="Mis Turnos"
         component={MisReservasScreen}
         options={{ title: "Mis Turnos" }}
       />
-
-      {/* 👇 Aquí pasamos correctamente la función */}
       <Tab.Screen
         name="Perfil"
-        children={(props) => <PerfilScreen {...props} setIsLoggedIn={setIsLoggedIn} />}
+        children={(props) => (
+          <PerfilScreen {...props} setIsLoggedIn={setIsLoggedIn} />
+        )}
         options={{ title: "Perfil" }}
       />
     </Tab.Navigator>

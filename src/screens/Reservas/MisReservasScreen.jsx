@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,13 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Modal,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import QRCode from "react-native-qrcode-svg";
 
 const PRIMARY_COLOR = "#144985";
 
@@ -22,6 +25,10 @@ const MisReservasScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDark, setIsDark] = useState(false);
+
+  // 📱 Modal QR
+  const [modalVisible, setModalVisible] = useState(false);
+  const [qrData, setQrData] = useState(null);
 
   /** 📦 Cargar reservas del usuario */
   const fetchReservas = async (isRefresh = false) => {
@@ -39,19 +46,19 @@ const MisReservasScreen = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (data && Array.isArray(data)) {
-        // 🧩 Ordenar: fecha DESC y hora ASC
+      if (Array.isArray(data)) {
+        // 🧩 Ordenar por fecha DESC y hora ASC
         const ordenadas = data.sort((a, b) => {
           const fechaA = new Date(a.tg_fecha);
           const fechaB = new Date(b.tg_fecha);
 
           if (fechaA.getTime() !== fechaB.getTime()) {
-            return fechaB - fechaA; // Fecha descendente
+            return fechaB - fechaA;
           }
 
           const horaA = a.tg_hora ? a.tg_hora.slice(0, 5) : "00:00";
           const horaB = b.tg_hora ? b.tg_hora.slice(0, 5) : "00:00";
-          return horaA.localeCompare(horaB); // Hora ascendente
+          return horaA.localeCompare(horaB);
         });
 
         setReservas(ordenadas);
@@ -67,11 +74,14 @@ const MisReservasScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchReservas();
-  }, []);
+  /** 🔁 Cargar datos cuando la vista gana foco */
+  useFocusEffect(
+    useCallback(() => {
+      fetchReservas();
+    }, [])
+  );
 
-  /** 🔄 Refrescar al deslizar hacia abajo */
+  /** 🔄 Refrescar manualmente al deslizar hacia abajo */
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchReservas(true);
@@ -89,20 +99,32 @@ const MisReservasScreen = () => {
     });
   };
 
-  /** 🎨 Render de tarjeta */
+  /** 📱 Mostrar QR */
+  const handleShowQR = async (turno) => {
+  const usuario_id = await AsyncStorage.getItem("USER_ID");
+
+  const urlQR = `https://dbanu.uleam.edu.ec/bienestar/confirmar-asistencia?id_turno=${turno.tg_id}&usuario_id=${usuario_id}&fecha=${turno.tg_fecha}`;
+  
+  setQrData(urlQR);
+  setModalVisible(true);
+};
+
+
+
+  /** 🎨 Render de cada reserva */
   const renderItem = ({ item }) => {
     const estadoNombre = item.estado_nombre || "Pendiente";
     const estado = estadoNombre.toLowerCase();
     const color =
       estado.includes("atendido")
         ? "#2e7d32"
-        : estado.includes("separado")
-        ? "#f9a825"
-        : estado.includes("cancelado")
-        ? "#d32f2f"
-        : PRIMARY_COLOR;
+        : estado.includes("reservado")
+          ? "#f9a825"
+          : estado.includes("cancelado")
+            ? "#d32f2f"
+            : PRIMARY_COLOR;
 
-    return (
+    const cardContent = (
       <View
         style={[
           styles.card,
@@ -164,6 +186,15 @@ const MisReservasScreen = () => {
         </View>
       </View>
     );
+
+    // Solo permitir clic si está reservado
+    return estado.includes("reservado") ? (
+      <TouchableOpacity onPress={() => handleShowQR(item)}>
+        {cardContent}
+      </TouchableOpacity>
+    ) : (
+      cardContent
+    );
   };
 
   /** ⏳ Cargando inicial */
@@ -223,7 +254,7 @@ const MisReservasScreen = () => {
         </Text>
       </View>
 
-      {/* Contenido principal con pull-to-refresh */}
+      {/* Contenido principal */}
       {reservas.length > 0 ? (
         <FlatList
           data={reservas}
@@ -258,6 +289,33 @@ const MisReservasScreen = () => {
           </Text>
         </View>
       )}
+
+      {/* 📱 Modal QR */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Código de Asistencia</Text>
+            <Text style={styles.modalSubtitle}>
+              Muestra este código al ingresar para registrar tu asistencia
+            </Text>
+            {qrData && (
+              <View style={{ marginVertical: 20 }}>
+                <QRCode
+                  value={JSON.stringify(qrData)}
+                  size={220}
+                  color={PRIMARY_COLOR}
+                />
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Botón modo oscuro */}
       <TouchableOpacity
@@ -328,11 +386,7 @@ const styles = StyleSheet.create({
   cardDesc: { marginTop: 4, marginBottom: 10, fontSize: 13.5, lineHeight: 18 },
   infoRow: { flexDirection: "row", alignItems: "center", marginVertical: 2 },
   infoText: { fontSize: 13.5, marginLeft: 5 },
-  badge: {
-    borderRadius: 20,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
+  badge: { borderRadius: 20, paddingVertical: 3, paddingHorizontal: 10 },
   badgeText: {
     color: "#fff",
     fontWeight: "600",
@@ -355,4 +409,32 @@ const styles = StyleSheet.create({
   textDarkInk: { color: "#1f3a5f" },
   textSoft: { color: "#6b7a90" },
   textSoftDark: { color: "#a0aec0" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 25,
+    borderRadius: 12,
+    alignItems: "center",
+    width: "85%",
+  },
+  modalTitle: { fontSize: 20, fontWeight: "bold", color: PRIMARY_COLOR },
+  modalSubtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#555",
+    marginTop: 5,
+  },
+  closeBtn: {
+    marginTop: 15,
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  closeText: { color: "#fff", fontWeight: "bold" },
 });

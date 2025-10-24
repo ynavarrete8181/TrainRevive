@@ -13,7 +13,8 @@ import {
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import estadisticasData from "../../data/estadisticasGym.json";
+import axiosClient from "../services/apiClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PRIMARY_COLOR = "#144985";
 const screenWidth = Dimensions.get("window").width - 40;
@@ -24,22 +25,35 @@ const meses = [
 ];
 
 const HomeScreen = () => {
-  const [mesSeleccionado, setMesSeleccionado] = useState("marzo");
+  const [mesSeleccionado, setMesSeleccionado] = useState("enero");
+  const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear());
   const [estadisticas, setEstadisticas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    cargarEstadisticas(mesSeleccionado);
-  }, [mesSeleccionado]);
+    cargarEstadisticas(mesSeleccionado, anioSeleccionado);
+  }, [mesSeleccionado, anioSeleccionado]);
 
-  const cargarEstadisticas = (mes) => {
+  const cargarEstadisticas = async (mes, anio) => {
     setLoading(true);
-    setTimeout(() => {
-      setEstadisticas(estadisticasData[mes]);
+    try {
+      const usuario_id = await AsyncStorage.getItem("USER_ID");
+      const token = await AsyncStorage.getItem("ACCESS_TOKEN");
+      const { data } = await axiosClient.get("/gym/estadisticas", {
+        params: { usuario_id, anio },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEstadisticas(data[mes]);
+    } catch (e) {
+      console.error("❌ Error al obtener estadísticas:", e);
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   };
+
+  /** 📆 Lista de los últimos 5 años */
+  const aniosDisponibles = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i);
 
   const renderMes = ({ item }) => (
     <TouchableOpacity
@@ -62,19 +76,35 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  return (
-    <View
+  const renderAnio = ({ item }) => (
+    <TouchableOpacity
       style={[
-        styles.safeArea,
-        isDark && { backgroundColor: "#0f1115" },
+        styles.anioItem,
+        anioSeleccionado === item && styles.anioItemActivo,
+        isDark && styles.anioItemDark,
       ]}
+      onPress={() => setAnioSeleccionado(item)}
     >
+      <Text
+        style={[
+          styles.anioTexto,
+          anioSeleccionado === item && styles.anioTextoActivo,
+          isDark && styles.textSoftDark,
+        ]}
+      >
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={[styles.safeArea, isDark && { backgroundColor: "#0f1115" }]}>
       <StatusBar
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={isDark ? "#0f1115" : "#ffffff"}
       />
 
-      {/* 🔹 Header estilo profesional */}
+      {/* 🔹 Header */}
       <View style={[styles.hero, isDark ? styles.heroDark : styles.heroLight]}>
         <View style={styles.heroRow}>
           <View style={[styles.heroBadge, isDark && styles.heroBadgeDark]}>
@@ -93,12 +123,32 @@ const HomeScreen = () => {
         <Text
           style={[styles.subtitle, isDark ? styles.textSoftDark : styles.textSoft]}
         >
-          Consulta tus estadísticas mensuales y progreso.
+          Consulta tus estadísticas mensuales y anuales.
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* 🔹 Selector de meses */}
+        {/* 🔹 Selector de Año */}
+        <View style={styles.selectorContainer}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              isDark ? styles.textWhite : styles.textDarkInk,
+            ]}
+          >
+            📆 Selecciona un año
+          </Text>
+          <FlatList
+            data={aniosDisponibles}
+            keyExtractor={(item) => item.toString()}
+            renderItem={renderAnio}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.anioLista}
+          />
+        </View>
+
+        {/* 🔹 Selector de Mes */}
         <View style={styles.selectorContainer}>
           <Text
             style={[
@@ -119,12 +169,7 @@ const HomeScreen = () => {
         </View>
 
         {/* 🔹 Estadísticas */}
-        <View
-          style={[
-            styles.card,
-            isDark ? styles.cardDark : styles.cardLight,
-          ]}
-        >
+        <View style={[styles.card, isDark ? styles.cardDark : styles.cardLight]}>
           <View style={styles.cardHeader}>
             <Text
               style={[
@@ -176,7 +221,7 @@ const HomeScreen = () => {
                 ))}
               </View>
 
-              {/* Gráfico */}
+              {/* Gráfico semanal */}
               <View style={styles.chartContainer}>
                 <LineChart
                   data={{
@@ -185,7 +230,7 @@ const HomeScreen = () => {
                       { data: estadisticas.grafico_semanal.map((d) => d.asistencias) },
                     ],
                   }}
-                  width={screenWidth - 32} // 🔹 margen interno
+                  width={screenWidth - 32}
                   height={220}
                   chartConfig={{
                     backgroundColor: "#fff",
@@ -201,7 +246,7 @@ const HomeScreen = () => {
                       stroke: PRIMARY_COLOR,
                     },
                     propsForBackgroundLines: {
-                      strokeDasharray: "", // líneas completas
+                      strokeDasharray: "",
                       stroke: isDark ? "#1f2937" : "#e0e6ef",
                     },
                   }}
@@ -209,7 +254,6 @@ const HomeScreen = () => {
                   style={styles.chart}
                 />
               </View>
-
             </>
           ) : (
             <Text
@@ -261,9 +305,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "800" },
   subtitle: { marginTop: 6, fontSize: 13 },
 
-  /* SECCIÓN DE MESES */
-  sectionTitle: { fontSize: 17, fontWeight: "700", marginBottom: 10 },
+  /* SELECTORES */
   selectorContainer: { marginBottom: 20 },
+  sectionTitle: { fontSize: 17, fontWeight: "700", marginBottom: 10 },
   mesLista: { paddingVertical: 5 },
   mesItem: {
     backgroundColor: "#e6ebf2",
@@ -276,6 +320,19 @@ const styles = StyleSheet.create({
   mesItemDark: { backgroundColor: "#1a2230" },
   mesTexto: { fontSize: 14, color: "#144985aa", fontWeight: "500" },
   mesTextoActivo: { color: "#fff", fontWeight: "700" },
+
+  anioLista: { paddingVertical: 5 },
+  anioItem: {
+    backgroundColor: "#dce4ef",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 18,
+    marginHorizontal: 5,
+  },
+  anioItemActivo: { backgroundColor: PRIMARY_COLOR },
+  anioItemDark: { backgroundColor: "#1a2230" },
+  anioTexto: { fontSize: 15, color: "#144985aa", fontWeight: "600" },
+  anioTextoActivo: { color: "#fff", fontWeight: "700" },
 
   /* CARD */
   card: {
@@ -311,7 +368,14 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: "bold" },
   statLabel: { fontSize: 13, textAlign: "center" },
 
-  chart: { marginTop: 10, borderRadius: 12 },
+  chartContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  chart: { borderRadius: 12, alignSelf: "center" },
 
   noData: { textAlign: "center", fontSize: 14, marginTop: 16 },
 
@@ -320,17 +384,4 @@ const styles = StyleSheet.create({
   textDarkInk: { color: "#1f3a5f" },
   textSoft: { color: "#6b7a90" },
   textSoftDark: { color: "#a0aec0" },
-
-  chartContainer: {
-  backgroundColor: "#fff",
-  borderRadius: 12,
-  overflow: "hidden", // 🔹 corta el exceso del gráfico
-  paddingVertical: 6,
-  marginTop: 6,
-},
-chart: {
-  borderRadius: 12,
-  alignSelf: "center",
-},
-
 });

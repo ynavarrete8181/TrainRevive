@@ -1,18 +1,23 @@
 import React, { useEffect, useState, useRef } from "react";
-import { ActivityIndicator, View } from "react-native";
+import {
+  ActivityIndicator,
+  View,
+  Alert,
+} from "react-native";
+import * as Linking from "expo-linking";
 import { Provider as PaperProvider } from "react-native-paper";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // 🧩 Componentes principales
 import NavBar from "./src/components/NavBar";
 
 // 🧩 Pantallas de autenticación
 import LoginSelectorScreen from "./src/screens/Auth/LoginSelectorScreen";
-import LoginMicrosoftScreen from "./src/screens/Auth/LoginMicrosoftScreen";
-import LoginScreen from "./src/screens/Auth/LoginScreen";
 import LoginMicrosoft from "./src/screens/Auth/LoginMicrosoft";
+import LoginScreen from "./src/screens/Auth/LoginScreen";
 
 const Stack = createStackNavigator();
 
@@ -31,6 +36,8 @@ export default function App() {
     setIsLoggedInRef.current = setIsLoggedIn;
   });
 
+  // 🧭 Listener de Deep Links
+  
   // 🔐 Verificar token guardado al abrir la app
   useEffect(() => {
     const checkToken = async () => {
@@ -60,36 +67,36 @@ export default function App() {
   // 🌐 Navegación principal
   return (
     <PaperProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {isLoggedIn ? (
-            // ✅ App principal
-            <Stack.Screen
-              name="MainTabs"
-              children={() => <NavBar setIsLoggedIn={setIsLoggedIn} />}
-            />
-          ) : (
-            // 🔐 Flujo de autenticación
-            <>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {isLoggedIn ? (
               <Stack.Screen
-                name="LoginSelector"
-                component={LoginSelectorScreen}
+                name="MainTabs"
+                children={() => <NavBar setIsLoggedIn={setIsLoggedIn} />}
               />
-              <Stack.Screen
-                name="LoginMicrosoft"
-                children={(props) => (
-                  <LoginMicrosoftScreen {...props} setIsLoggedIn={setIsLoggedIn} />
-                )}
-              />
-              <Stack.Screen
-                name="Login"
-                component={LoginScreenWrapper}
-                initialParams={{ setIsLoggedInRef }}
-              />
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
+            ) : (
+              <>
+                <Stack.Screen
+                  name="LoginSelector"
+                  component={LoginSelectorScreen}
+                />
+                <Stack.Screen
+                  name="LoginMicrosoft"
+                  children={(props) => (
+                    <LoginMicrosoft {...props} setIsLoggedIn={setIsLoggedIn} />
+                  )}
+                />
+                <Stack.Screen
+                  name="Login"
+                  component={LoginScreenWrapper}
+                  initialParams={{ setIsLoggedInRef }}
+                />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
     </PaperProvider>
   );
 }

@@ -1,4 +1,3 @@
-// src/screens/ReservarScreen.jsx
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -47,11 +46,10 @@ const ReservarScreen = () => {
   const [menuCatVisible, setMenuCatVisible] = useState(false);
   const [menuServVisible, setMenuServVisible] = useState(false);
   const [reservandoId, setReservandoId] = useState(null);
-  const [tieneTurnoDia, setTieneTurnoDia] = useState(false);
+  const [mensajeBloqueo, setMensajeBloqueo] = useState(null);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [turnoSeleccionado, setTurnoSeleccionado] = useState(null);
-
   const [TipoUsuario, setTipoUsuario] = useState(null);
 
   // Animación ícono cargando
@@ -73,7 +71,6 @@ const ReservarScreen = () => {
           const tipo = await AsyncStorage.getItem("USER_ROL");
           console.log("🔹 Tipo de usuario cargado:", tipo);
           setTipoUsuario(tipo);
-
           await fetchCategorias();
         } catch (e) {
           console.log("Error cargando tipo usuario:", e);
@@ -85,16 +82,7 @@ const ReservarScreen = () => {
     }, [])
   );
 
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     const loadInit = async () => {
-  //       await fetchCategorias();
-  //       setLoadingGlobal(false);
-  //     };
-  //     loadInit();
-  //   }, [])
-  // );
-
+  /** 🔹 Obtener categorías */
   const fetchCategorias = async () => {
     try {
       const token = await AsyncStorage.getItem("ACCESS_TOKEN");
@@ -111,6 +99,7 @@ const ReservarScreen = () => {
     }
   };
 
+  /** 🔹 Obtener servicios */
   const fetchServicios = async (categoriaId, tokenParam = null) => {
     try {
       const token = tokenParam || (await AsyncStorage.getItem("ACCESS_TOKEN"));
@@ -120,53 +109,39 @@ const ReservarScreen = () => {
       setServicios(data);
       if (data.length > 0) {
         setSelectedServicio(data[0]);
-        verificarTurnoYMostrar(date, data[0].ts_id, token);
+        fetchTurnosDisponibles(date, data[0].ts_id, token);
       }
     } catch (e) {
       console.log("Error servicios:", e);
     }
   };
 
-  /** 🔍 Verifica si ya tiene turno en la fecha seleccionada antes de cargar turnos */
-  const verificarTurnoYMostrar = async (fecha, servicioId, tokenParam = null) => {
+  /** 🔍 Obtener turnos disponibles (usa nueva función con validación de usuario) */
+  const fetchTurnosDisponibles = async (fecha, servicioId, tokenParam = null) => {
     setLoadingTurnos(true);
     try {
-      const usuario_id = await AsyncStorage.getItem("USER_ID");
       const token = tokenParam || (await AsyncStorage.getItem("ACCESS_TOKEN"));
-      const { data: misTurnos } = await axiosClient.get(`/gym/turnos-usuario/${usuario_id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const yaTiene = misTurnos.some(
-        (r) => new Date(r.tg_fecha).toDateString() === new Date(fecha).toDateString()
-      );
-
-      setTieneTurnoDia(yaTiene);
-      if (yaTiene) {
-        setTurnos([]);
-        return;
-      }
-
-      // Si no tiene turno, mostrar los disponibles
-      const fechaYMD = toLocalYMD(fecha);
+      const usuario_id = await AsyncStorage.getItem("USER_ID");
       const usr_tipo = TipoUsuario || (await AsyncStorage.getItem("USER_ROL"));
-
-      console.log("Tipo usuario:", usr_tipo);
-
-      // if (!usr_tipo) {
-      //   console.log("⏳ Esperando tipo_usuario antes de verificar turnos...");
-      //   return;
-      // }
 
       const { data } = await axiosClient.get("/gym/turnos", {
         params: {
-          fecha: fechaYMD,
+          fecha: toLocalYMD(fecha),
           servicio_id: servicioId,
-          tipo_usuario: usr_tipo
+          tipo_usuario: usr_tipo,
+          usuario_id, // 👈 nuevo parámetro
         },
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Si el backend devuelve un mensaje de bloqueo
+      if (data.length > 0 && data[0].mensaje) {
+        setMensajeBloqueo(data[0].mensaje);
+        setTurnos([]);
+        return;
+      }
+
+      setMensajeBloqueo(null);
 
       // Filtrar turnos de hora actual hacia adelante
       const ahora = new Date();
@@ -177,48 +152,45 @@ const ReservarScreen = () => {
 
       setTurnos(filtrados);
     } catch (e) {
-      console.log("Error al verificar/mostrar turnos:", e);
+      console.log("Error al obtener turnos:", e);
+      Alert.alert("Error", "No se pudieron obtener los turnos disponibles.");
     } finally {
       setLoadingTurnos(false);
     }
   };
 
+  /** ⏩ Cambiar de fecha */
   const handleChangeFecha = (dias) => {
     const nueva = new Date(date);
     nueva.setDate(date.getDate() + dias);
-
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-
     if (nueva < hoy) {
       Alert.alert("⚠️ No permitido", "No puedes seleccionar fechas anteriores a hoy.");
       return;
     }
-
     setDate(nueva);
-    if (selectedServicio) verificarTurnoYMostrar(nueva, selectedServicio.ts_id);
+    if (selectedServicio) fetchTurnosDisponibles(nueva, selectedServicio.ts_id);
   };
 
+  /** 📅 Reservar turno */
   const handleReservar = async (turno) => {
     setReservandoId(turno.tg_id_horario_gym);
     try {
       const usuario_id = await AsyncStorage.getItem("USER_ID");
-
       const payload = {
         p_usuario_id: Number(usuario_id),
         p_servicio_id: turno.servicio_id,
         p_horario_gym_id: turno.tg_id_horario_gym,
         p_fecha: turno.fecha,
-        p_hora: turno.hora_inicio
+        p_hora: turno.hora_inicio,
       };
-
-      console.log("Payload reserva:", payload);
       const { data } = await axiosClient.post("/gym/reservar-turno", payload);
       if (data.success) {
-        Alert.alert("Éxito", "Turno reservado correctamente.");
-        verificarTurnoYMostrar(date, selectedServicio?.ts_id);
+        Alert.alert("✅ Éxito", "Turno reservado correctamente.");
+        fetchTurnosDisponibles(date, selectedServicio?.ts_id);
       } else {
-        Alert.alert("No se pudo reservar", data.message || "Intenta nuevamente.");
+        Alert.alert("⚠️ No se pudo reservar", data.message || "Intenta nuevamente.");
       }
     } catch (e) {
       Alert.alert("Error", e.message);
@@ -227,6 +199,7 @@ const ReservarScreen = () => {
     }
   };
 
+  /** 🗓️ Formatear fecha */
   const formatFecha = (fecha) => {
     const d = new Date(fecha);
     return `${diasSemana[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
@@ -258,6 +231,7 @@ const ReservarScreen = () => {
           <Text style={styles.subtitle}>Selecciona categoría, servicio y fecha.</Text>
         </View>
 
+        {/* Categorías */}
         <View style={styles.group}>
           <Text style={styles.label}>Categoría</Text>
           <Menu
@@ -283,6 +257,7 @@ const ReservarScreen = () => {
             ))}
           </Menu>
 
+          {/* Servicios */}
           <Text style={[styles.label, { marginTop: 15 }]}>Servicio</Text>
           <Menu
             visible={menuServVisible}
@@ -300,7 +275,7 @@ const ReservarScreen = () => {
                 onPress={() => {
                   setSelectedServicio(srv);
                   setMenuServVisible(false);
-                  verificarTurnoYMostrar(date, srv.ts_id);
+                  fetchTurnosDisponibles(date, srv.ts_id);
                 }}
                 title={srv.ts_nombre}
               />
@@ -322,13 +297,11 @@ const ReservarScreen = () => {
           </View>
         </View>
 
+        {/* Mostrar resultado */}
         {loadingTurnos ? (
           <ActivityIndicator color={PRIMARY_COLOR} size="large" style={{ marginTop: 20 }} />
-        ) : tieneTurnoDia ? (
-          <Text style={styles.mensajeBloqueo}>
-            ⚠️ Ya tienes un turno reservado para este día.
-            Podrás reservar nuevamente en fechas posteriores.
-          </Text>
+        ) : mensajeBloqueo ? (
+          <Text style={styles.mensajeBloqueo}>⚠️ {mensajeBloqueo}</Text>
         ) : turnos.length === 0 ? (
           <Text style={styles.noTurnos}>No hay turnos disponibles.</Text>
         ) : (
@@ -405,6 +378,7 @@ const ReservarScreen = () => {
 };
 
 export default ReservarScreen;
+
 
 /* 🎨 Estilos */
 const styles = StyleSheet.create({
