@@ -18,7 +18,8 @@ import NavBar from "./src/components/NavBar";
 import LoginSelectorScreen from "./src/screens/Auth/LoginSelectorScreen";
 import LoginMicrosoft from "./src/screens/Auth/LoginMicrosoft";
 import LoginScreen from "./src/screens/Auth/LoginScreen";
-
+import { ThemeProvider } from "./src/context/ThemeContext";
+ 
 const Stack = createStackNavigator();
 
 const LoginScreenWrapper = (props) => {
@@ -68,6 +69,7 @@ export default function App() {
   return (
     <PaperProvider>
       <SafeAreaProvider>
+        <ThemeProvider>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {isLoggedIn ? (
@@ -96,6 +98,7 @@ export default function App() {
             )}
           </Stack.Navigator>
         </NavigationContainer>
+        </ThemeProvider>
       </SafeAreaProvider>
     </PaperProvider>
   );

@@ -1,3 +1,4 @@
+// src/screens/Reservas/MisReservasScreen.jsx
 import React, { useState, useCallback } from "react";
 import {
   View,
@@ -7,26 +8,28 @@ import {
   ActivityIndicator,
   StatusBar,
   Platform,
-  TouchableOpacity,
   Alert,
   RefreshControl,
   Modal,
+  TouchableOpacity,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosClient from "../services/apiClient";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import QRCode from "react-native-qrcode-svg";
+import { useTheme, useThemeColors } from "../../context/ThemeContext";
 
 const PRIMARY_COLOR = "#144985";
 
 const MisReservasScreen = () => {
+  const { isDark } = useTheme();
+  const colors = useThemeColors();
+
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
-  // 📱 Modal QR
   const [modalVisible, setModalVisible] = useState(false);
   const [qrData, setQrData] = useState(null);
 
@@ -47,24 +50,16 @@ const MisReservasScreen = () => {
       });
 
       if (Array.isArray(data)) {
-        // 🧩 Ordenar por fecha DESC y hora ASC
         const ordenadas = data.sort((a, b) => {
           const fechaA = new Date(a.tg_fecha);
           const fechaB = new Date(b.tg_fecha);
-
-          if (fechaA.getTime() !== fechaB.getTime()) {
-            return fechaB - fechaA;
-          }
-
+          if (fechaA.getTime() !== fechaB.getTime()) return fechaB - fechaA;
           const horaA = a.tg_hora ? a.tg_hora.slice(0, 5) : "00:00";
           const horaB = b.tg_hora ? b.tg_hora.slice(0, 5) : "00:00";
           return horaA.localeCompare(horaB);
         });
-
         setReservas(ordenadas);
-      } else {
-        setReservas([]);
-      }
+      } else setReservas([]);
     } catch (error) {
       console.error("❌ Error al obtener reservas:", error);
       Alert.alert("Error", "No se pudieron cargar tus reservas.");
@@ -74,20 +69,17 @@ const MisReservasScreen = () => {
     }
   };
 
-  /** 🔁 Cargar datos cuando la vista gana foco */
   useFocusEffect(
     useCallback(() => {
       fetchReservas();
     }, [])
   );
 
-  /** 🔄 Refrescar manualmente al deslizar hacia abajo */
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchReservas(true);
   };
 
-  /** 🔹 Formatear fecha */
   const formatFecha = (fecha) => {
     if (!fecha) return "";
     const f = new Date(fecha);
@@ -99,19 +91,13 @@ const MisReservasScreen = () => {
     });
   };
 
-  /** 📱 Mostrar QR */
   const handleShowQR = async (turno) => {
-  const usuario_id = await AsyncStorage.getItem("USER_ID");
+    const usuario_id = await AsyncStorage.getItem("USER_ID");
+    const urlQR = `https://dbanu.uleam.edu.ec/bienestar/confirmar-asistencia?id_turno=${turno.tg_id}&usuario_id=${usuario_id}&fecha=${turno.tg_fecha}`;
+    setQrData(urlQR);
+    setModalVisible(true);
+  };
 
-  const urlQR = `https://dbanu.uleam.edu.ec/bienestar/confirmar-asistencia?id_turno=${turno.tg_id}&usuario_id=${usuario_id}&fecha=${turno.tg_fecha}`;
-  
-  setQrData(urlQR);
-  setModalVisible(true);
-};
-
-
-
-  /** 🎨 Render de cada reserva */
   const renderItem = ({ item }) => {
     const estadoNombre = item.estado_nombre || "Pendiente";
     const estado = estadoNombre.toLowerCase();
@@ -119,34 +105,31 @@ const MisReservasScreen = () => {
       estado.includes("atendido")
         ? "#2e7d32"
         : estado.includes("reservado")
-          ? "#f9a825"
-          : estado.includes("cancelado")
-            ? "#d32f2f"
-            : PRIMARY_COLOR;
+        ? "#f9a825"
+        : estado.includes("cancelado")
+        ? "#d32f2f"
+        : colors.accent;
 
     const cardContent = (
       <View
         style={[
           styles.card,
-          isDark ? styles.cardDark : styles.cardLight,
-          { borderLeftColor: color },
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderLeftColor: color,
+          },
         ]}
       >
-        {/* Cabecera */}
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleWrap}>
             <Icon
               name="dumbbell"
               size={18}
-              color={isDark ? "#9ad1ff" : PRIMARY_COLOR}
+              color={isDark ? "#9ad1ff" : colors.accent}
               style={{ marginRight: 6 }}
             />
-            <Text
-              style={[
-                styles.cardTitle,
-                isDark ? styles.textWhite : styles.textDarkInk,
-              ]}
-            >
+            <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
               {item.ts_nombre || "Servicio"}
             </Text>
           </View>
@@ -156,30 +139,27 @@ const MisReservasScreen = () => {
           </View>
         </View>
 
-        {/* Descripción */}
         {item.ts_descripcion && (
-          <Text
-            style={[
-              styles.cardDesc,
-              isDark ? styles.textSoftDark : styles.textSoft,
-            ]}
-          >
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
             {item.ts_descripcion}
           </Text>
         )}
 
-        {/* Datos */}
         <View style={styles.infoRow}>
-          <Icon name="calendar-outline" size={17} color={isDark ? "#a0aec0" : "#555"} />
-          <Text style={[styles.infoText, isDark && styles.textSoftDark]}>
+          <Icon
+            name="calendar-outline"
+            size={17}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             {" "}
             {formatFecha(item.tg_fecha)}
           </Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Icon name="clock-outline" size={17} color={isDark ? "#a0aec0" : "#555"} />
-          <Text style={[styles.infoText, isDark && styles.textSoftDark]}>
+          <Icon name="clock-outline" size={17} color={colors.textSecondary} />
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             {" "}
             {item.tg_hora || "—"}
           </Text>
@@ -187,7 +167,6 @@ const MisReservasScreen = () => {
       </View>
     );
 
-    // Solo permitir clic si está reservado
     return estado.includes("reservado") ? (
       <TouchableOpacity onPress={() => handleShowQR(item)}>
         {cardContent}
@@ -197,17 +176,11 @@ const MisReservasScreen = () => {
     );
   };
 
-  /** ⏳ Cargando inicial */
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loaderContainer,
-          isDark && { backgroundColor: "#0f1115" },
-        ]}
-      >
-        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-        <Text style={[styles.loadingText, isDark && styles.textSoftDark]}>
+      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
           Cargando tus reservas...
         </Text>
       </View>
@@ -215,46 +188,40 @@ const MisReservasScreen = () => {
   }
 
   return (
-    <View
-      style={[
-        styles.safeArea,
-        isDark && { backgroundColor: "#0f1115" },
-      ]}
-    >
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar
         barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={isDark ? "#0f1115" : "#ffffff"}
+        backgroundColor={colors.background}
       />
 
-      {/* Header */}
-      <View style={[styles.hero, isDark ? styles.heroDark : styles.heroLight]}>
+      <View
+        style={[
+          styles.hero,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.heroRow}>
           <View
             style={[
               styles.heroBadge,
-              isDark && styles.heroBadgeDark,
+              { backgroundColor: isDark ? "#132235" : "#eaf2ff" },
             ]}
           >
             <Icon
               name="calendar-check-outline"
               size={18}
-              color={isDark ? "#9ad1ff" : PRIMARY_COLOR}
+              color={isDark ? "#9ad1ff" : colors.accent}
             />
           </View>
-          <Text
-            style={[styles.title, isDark ? styles.textWhite : styles.textDarkInk]}
-          >
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
             Mis Reservas
           </Text>
         </View>
-        <Text
-          style={[styles.subtitle, isDark ? styles.textSoftDark : styles.textSoft]}
-        >
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Consulta tus turnos registrados y su estado.
         </Text>
       </View>
 
-      {/* Contenido principal */}
       {reservas.length > 0 ? (
         <FlatList
           data={reservas}
@@ -265,26 +232,17 @@ const MisReservasScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[PRIMARY_COLOR]}
-              tintColor={PRIMARY_COLOR}
+              colors={[colors.accent]}
+              tintColor={colors.accent}
               title="Actualizando..."
-              titleColor={isDark ? "#fff" : PRIMARY_COLOR}
+              titleColor={colors.textSecondary}
             />
           }
         />
       ) : (
         <View style={styles.emptyBox}>
-          <Icon
-            name="calendar-remove-outline"
-            size={64}
-            color={isDark ? "#6b7280" : "#9e9e9e"}
-          />
-          <Text
-            style={[
-              styles.noDataText,
-              isDark ? styles.textSoftDark : styles.textSoft,
-            ]}
-          >
+          <Icon name="calendar-remove-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
             No tienes reservas registradas.
           </Text>
         </View>
@@ -293,9 +251,11 @@ const MisReservasScreen = () => {
       {/* 📱 Modal QR */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Código de Asistencia</Text>
-            <Text style={styles.modalSubtitle}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.accent }]}>
+              Código de Asistencia
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
               Muestra este código al ingresar para registrar tu asistencia
             </Text>
             {qrData && (
@@ -303,12 +263,12 @@ const MisReservasScreen = () => {
                 <QRCode
                   value={JSON.stringify(qrData)}
                   size={220}
-                  color={PRIMARY_COLOR}
+                  color={colors.accent}
                 />
               </View>
             )}
             <TouchableOpacity
-              style={styles.closeBtn}
+              style={[styles.closeBtn, { backgroundColor: colors.accent }]}
               onPress={() => setModalVisible(false)}
             >
               <Text style={styles.closeText}>Cerrar</Text>
@@ -316,26 +276,6 @@ const MisReservasScreen = () => {
           </View>
         </View>
       </Modal>
-
-      {/* Botón modo oscuro */}
-      <TouchableOpacity
-        style={styles.themeToggle}
-        onPress={() => setIsDark(!isDark)}
-      >
-        <Icon
-          name={isDark ? "weather-sunny" : "weather-night"}
-          size={20}
-          color={isDark ? "#ffcc80" : "#1f6feb"}
-        />
-        <Text
-          style={[
-            styles.themeToggleText,
-            isDark ? styles.textSoftDark : styles.textDarkInk,
-          ]}
-        >
-          {isDark ? "Modo claro" : "Modo oscuro"}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -346,12 +286,9 @@ export default MisReservasScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f5f7fb",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   hero: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
-  heroLight: { backgroundColor: "#ffffff", borderColor: "#eef1f4" },
-  heroDark: { backgroundColor: "#0f1115", borderColor: "#171a21" },
   heroRow: { flexDirection: "row", alignItems: "center" },
   heroBadge: {
     width: 34,
@@ -359,14 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(39, 174, 96, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(39, 174, 96, 0.25)",
     marginRight: 10,
-  },
-  heroBadgeDark: {
-    backgroundColor: "rgba(165, 214, 167, 0.12)",
-    borderColor: "rgba(165, 214, 167, 0.25)",
   },
   title: { fontSize: 22, fontWeight: "800" },
   subtitle: { marginTop: 6, fontSize: 13 },
@@ -378,9 +308,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderLeftWidth: 5,
   },
-  cardLight: { backgroundColor: "#ffffff", borderColor: "#eef1f4" },
-  cardDark: { backgroundColor: "#0f131a", borderColor: "#1a2230" },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   cardTitleWrap: { flexDirection: "row", alignItems: "center", flex: 1 },
   cardTitle: { fontSize: 15, fontWeight: "700" },
   cardDesc: { marginTop: 4, marginBottom: 10, fontSize: 13.5, lineHeight: 18 },
@@ -397,18 +329,6 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 8, fontSize: 14 },
   emptyBox: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   noDataText: { fontSize: 15, marginTop: 10 },
-  themeToggle: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  themeToggleText: { marginLeft: 8, fontSize: 14, fontWeight: "600" },
-  textWhite: { color: "#ffffff" },
-  textDarkInk: { color: "#1f3a5f" },
-  textSoft: { color: "#6b7a90" },
-  textSoftDark: { color: "#a0aec0" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -416,22 +336,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#fff",
     padding: 25,
     borderRadius: 12,
     alignItems: "center",
     width: "85%",
   },
-  modalTitle: { fontSize: 20, fontWeight: "bold", color: PRIMARY_COLOR },
-  modalSubtitle: {
-    fontSize: 14,
-    textAlign: "center",
-    color: "#555",
-    marginTop: 5,
-  },
+  modalTitle: { fontSize: 20, fontWeight: "bold" },
+  modalSubtitle: { fontSize: 14, textAlign: "center", marginTop: 5 },
   closeBtn: {
     marginTop: 15,
-    backgroundColor: PRIMARY_COLOR,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

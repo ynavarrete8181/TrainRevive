@@ -1,13 +1,3 @@
-/* export const config = {
-    appId: '13e24fa4-9c64-4653-a96c-20964510b52a',
-    redirectUri: 'http://localhost:3000',
-    scopes: [
-        'user.read'
-    ],
-    authority: 'https://login.microsoftonline.com/31a17900-7589-4cfc-b11a-f4e83c27b8ed'
-    
-}; */
-
 // src/config/ConfigMicrosoft.jsx
 import * as AuthSession from "expo-auth-session";
 import Constants from "expo-constants";
@@ -22,39 +12,75 @@ const CLIENT_ID = "a5b318d7-321a-4629-899d-fb0efc94660a";
 
 // 🔹 Redirects según entorno
 const expoRedirect = `exp://vecwene-oscar6587-8081.exp.direct`;
-const nativeRedirect = "com.uleam.edu.ec.GymUleam://auth";
+const nativeRedirect = "com.uleam.edu.ec.gymuleam://auth"; // esquema real de Android
 
-// 🔹 Intento de descubrimiento automático
+// 🔹 Descubrimiento automático
 const discoveryEndpoint = `https://login.microsoftonline.com/${TENANT_ID}/v2.0/.well-known/openid-configuration`;
 
-// ✅ Fallback manual (si el auto discovery falla)
+// ✅ Fallback manual
 export const manualDiscovery = {
   authorizationEndpoint: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize`,
   tokenEndpoint: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`,
   revocationEndpoint: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/logout`,
 };
 
+/**
+ * 🎭 Función auxiliar
+ * Transforma temporalmente la URI real (minúscula) para que Microsoft la vea en mayúsculas.
+ */
+export function patchRedirectForMicrosoft(realRedirect) {
+  return realRedirect.replace(
+    "com.uleam.edu.ec.gymuleam://auth",
+    "com.uleam.edu.ec.GymUleam://auth"
+  );
+}
+
+/**
+ * ✅ Configuración base
+ */
 export const config = {
   clientId: CLIENT_ID,
-
-  // 📡 Usar descubrimiento automático (si responde bien)
   authority: discoveryEndpoint,
-
-  // ✅ Scopes recomendados por Microsoft Graph API
   scopes: ["openid", "profile", "email", "User.Read", "offline_access"],
 
-  // ✅ Redirect dinámico según entorno
   redirectUri:
     Constants.appOwnership === "expo"
-      ? expoRedirect // En Expo Go (modo desarrollo)
+      ? AuthSession.makeRedirectUri({ useProxy: true })
       : AuthSession.makeRedirectUri({
-          native: nativeRedirect, // En build nativa (APK o IPA)
+          scheme: "com.uleam.edu.ec.gymuleam",
+          path: "auth",
           useProxy: false,
         }),
 
-  // 🚀 Exportamos fallback manual para usar en caso de error
   fallback: manualDiscovery,
 };
 
+/**
+ * 🚀 Helper para construir correctamente el authUrl
+ * (usado en tu LoginScreen)
+ */
+export function buildMicrosoftAuthUrl() {
+  const redirectUri =
+    Constants.appOwnership === "expo"
+      ? expoRedirect
+      : AuthSession.makeRedirectUri({
+          scheme: "com.uleam.edu.ec.gymuleam",
+          path: "auth",
+          useProxy: false,
+        });
 
+  // 🎭 Solo modificamos la salida para Microsoft
+  const outgoingRedirect = patchRedirectForMicrosoft(redirectUri);
 
+  const authUrl = `${manualDiscovery.authorizationEndpoint}?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(
+    outgoingRedirect
+  )}&scope=${encodeURIComponent(
+    config.scopes.join(" ")
+  )}&response_mode=query`;
+
+  console.log("👉 Redirect real:", redirectUri);
+  console.log("🎭 Redirect enviado a Microsoft:", outgoingRedirect);
+  console.log("🔗 Auth URL final:", authUrl);
+
+  return { authUrl, redirectUri };
+}

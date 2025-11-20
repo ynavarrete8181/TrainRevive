@@ -2,12 +2,12 @@
   "expo": {
     "name": "GYM Uleam",
     "slug": "TrainRevive",
-    "version": "1.6.0",
+    "version": "1.6.22",
     "orientation": "portrait",
     "icon": "./assets/uleam-ico2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "com.uleam.edu.ec.GymUleam",
+    "scheme": "com.uleam.edu.ec.gymuleam",
     "splash": {
       "image": "./assets/uleam-ico2.png",
       "resizeMode": "contain",
@@ -33,11 +33,12 @@
     },
     "android": {
       "package": "com.uleam.edu.ec.GymUleam",
-      "versionCode": 5,
+      "versionCode": 22,
+      "buildNumber": "22",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/uleam-ico3.png",
+        "foregroundImage": "./assets/uleam-ico2.png",
         "backgroundColor": "#ffffff",
-        "monochromeImage": "./assets/uleam-ico3.png"
+        "monochromeImage": "./assets/uleam-ico2.png"
       },
       "permissions": [
         "INTERNET",
@@ -53,8 +54,23 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "com.uleam.edu.ec.GymUleam",
-              "path": "/auth"
+              "scheme": "com.uleam.edu.ec.gymuleam",
+              "host": "auth",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "dbanu.appgoturno.online",
+              "pathPrefix": "/"
             }
           ],
           "category": [
@@ -74,7 +90,8 @@
       }
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "updates": {
       "enabled": false

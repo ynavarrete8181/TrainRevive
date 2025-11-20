@@ -9,32 +9,39 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { config as microsoftConfig } from "../config/ConfigMicrosoft";
+import { config as microsoftConfig, manualDiscovery } from "../config/ConfigMicrosoft";
 import axiosClient from "../../screens/services/apiClient";
+
+// ✅ Cerrar navegador después de autenticación
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
   const [loading, setLoading] = useState(false);
   const [phase, setPhase] = useState("");
 
+  // 🔹 Auto-discovery
   const discovery =
-    AuthSession.useAutoDiscovery(microsoftConfig.authority) ||
-    microsoftConfig.fallback;
+    AuthSession.useAutoDiscovery(
+      `https://login.microsoftonline.com/31a17900-7589-4cfc-b11a-f4e83c27b8ed/v2.0`
+    ) || manualDiscovery;
 
+  // 🔹 Hook principal para Microsoft Auth
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: microsoftConfig.clientId,
       scopes: microsoftConfig.scopes,
       redirectUri: microsoftConfig.redirectUri,
       usePKCE: true,
-      codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
+      responseType: AuthSession.ResponseType.Code,
     },
     discovery
   );
 
-  /** 🔑 Procesar el código devuelto por Microsoft y continuar el login */
+  /** 🔑 Procesar el código devuelto por Microsoft */
   const handleAuthCode = async (code) => {
     try {
       setLoading(true);
@@ -47,7 +54,7 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
         return;
       }
 
-      // Intercambiar el código por un token de Microsoft
+      // Intercambio del código por token
       const tokenResult = await AuthSession.exchangeCodeAsync(
         {
           clientId: microsoftConfig.clientId,
@@ -70,7 +77,7 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
       const access_token = tokenResult.accessToken;
       await AsyncStorage.setItem("MS_ACCESS_TOKEN", access_token);
 
-      // 📡 Consultar datos del usuario en Microsoft Graph
+      // 👤 Datos del usuario desde Microsoft Graph
       const graphResponse = await fetch("https://graph.microsoft.com/v1.0/me", {
         headers: { Authorization: `Bearer ${access_token}` },
       });
@@ -90,7 +97,7 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
         }
       } else identificador = email;
 
-      // 🚀 Verificar usuario en Laravel
+      // 📡 Verificar usuario en Laravel
       const { data } = await axiosClient.post("/login-gym", {
         cedula: identificador,
         tipo,
@@ -99,13 +106,13 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
       if (!data?.success || !data.token) {
         Alert.alert(
           "Error al iniciar sesión",
-          "Revisa si seleccionaste correctamente el tipo de usuario (Estudiante o Comunidad Universitaria). Si el problema persiste, contacta al administrador."
+          "Verifica si seleccionaste correctamente el tipo de usuario."
         );
         setLoading(false);
         return;
       }
 
-      // Guardar tokens y datos
+      // Guardar tokens
       await AsyncStorage.multiSet([
         ["ACCESS_TOKEN", data.token],
         ["REFRESH_TOKEN", data.refresh_token || ""],
@@ -115,15 +122,12 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
         ["USER_ROL", data.rol],
       ]);
 
-      // 🟢 Ir directo al Home
+      // Ir al Home
       if (typeof setIsLoggedIn === "function") setIsLoggedIn(true);
       else navigation.replace("MainTabs");
     } catch (error) {
       console.error("❌ Error durante autenticación:", error);
-      Alert.alert(
-        "Error al iniciar sesión",
-        "Revisa si seleccionaste correctamente el tipo de usuario (Estudiante o Comunidad Universitaria). Si el problema persiste, contacta al administrador."
-      );
+      Alert.alert("Error al iniciar sesión", "No se pudo completar la autenticación con Microsoft.");
     } finally {
       setLoading(false);
       setPhase("");
@@ -131,36 +135,34 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
     }
   };
 
-  /** 🎯 Detectar respuesta cuando la app no se cerró */
+  /** 🎯 Detectar respuesta automática */
   useEffect(() => {
     if (response?.type === "success" && response.params?.code) {
+      console.log("📩 Código recibido automáticamente:", response.params.code);
       handleAuthCode(response.params.code);
     }
   }, [response]);
 
-  /** 🧭 Detectar deep link manual (solo si la app fue cerrada) */
+  /** 🧭 Detectar deep link manual (si la app se cierra) */
   useEffect(() => {
     const handleDeepLink = ({ url }) => {
-      if (url?.includes("?code=")) {
-        const codeMatch = url.match(/code=([^&]+)/);
-        if (codeMatch && codeMatch[1]) handleAuthCode(codeMatch[1]);
-      }
+      console.log("🔗 Deep link recibido:", url);
+      const codeMatch = url.match(/code=([^&]+)/);
+      if (codeMatch && codeMatch[1]) handleAuthCode(codeMatch[1]);
     };
-
-    const subscription = Linking.addEventListener("url", handleDeepLink);
-    return () => subscription.remove();
+    const sub = Linking.addEventListener("url", handleDeepLink);
+    return () => sub.remove();
   }, []);
 
-  /** 🚀 Iniciar flujo de autenticación */
+  /** 🚀 Iniciar flujo Microsoft */
   const iniciarLogin = async () => {
     try {
-      if (!request) return;
-      if (request.codeVerifier) {
-        await AsyncStorage.setItem("CODE_VERIFIER", request.codeVerifier);
-      }
-      await promptAsync();
+      console.log("✅ Iniciando flujo Microsoft...");
+      await AsyncStorage.setItem("CODE_VERIFIER", request?.codeVerifier || "");
+      await promptAsync({ useProxy: false });
     } catch (error) {
       console.error("❌ Error iniciando login:", error);
+      Alert.alert("Error inesperado", error.message || "No se pudo abrir el navegador.");
     }
   };
 

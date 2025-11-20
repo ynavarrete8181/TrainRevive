@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import TopBar from "./TopBar";
+import { useTheme, useThemeColors } from "../context/ThemeContext"; // ✅ Tema global
 
 // 🧩 Pantallas principales
 import HomeScreen from "../screens/Home/HomeScreen";
@@ -14,7 +15,9 @@ import PerfilScreen from "../screens/Perfil/PerfilScreen";
 const Tab = createBottomTabNavigator();
 
 const NavBar = ({ setIsLoggedIn }) => {
-  const insets = useSafeAreaInsets(); // 👈 márgenes seguros
+  const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
+  const colors = useThemeColors();
 
   return (
     <Tab.Navigator
@@ -47,14 +50,18 @@ const NavBar = ({ setIsLoggedIn }) => {
             />
           );
         },
-        tabBarActiveTintColor: "rgba(20,73,133,1)",
-        tabBarInactiveTintColor: "gray",
+
+        // 🎨 Colores dinámicos del tema
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: isDark ? "#888" : "gray",
+
+        // 🧭 Fondo dinámico del tab bar
         tabBarStyle: {
-          height: 60 + insets.bottom, // 👈 se ajusta automáticamente
+          height: 60 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom / 2 : 6,
           borderTopWidth: 0.5,
-          borderTopColor: "#ddd",
-          backgroundColor: "#fff",
+          borderTopColor: colors.border,
+          backgroundColor: colors.card,
           elevation: 10,
         },
         tabBarLabelStyle: {
