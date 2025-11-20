@@ -76,7 +76,7 @@ export function buildMicrosoftAuthUrl() {
     outgoingRedirect
   )}&scope=${encodeURIComponent(
     config.scopes.join(" ")
-  )}&response_mode=query`;
+  )}&response_mode=query&prompt=select_account`;
 
   console.log("👉 Redirect real:", redirectUri);
   console.log("🎭 Redirect enviado a Microsoft:", outgoingRedirect);
