@@ -13,7 +13,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { config as microsoftConfig, manualDiscovery } from "../config/ConfigMicrosoft";
+import { config as microsoftConfig, manualDiscovery,forceMicrosoftLogout } from "../config/ConfigMicrosoft";
 import axiosClient from "../../screens/services/apiClient";
 
 // ✅ Cerrar navegador después de autenticación
@@ -157,14 +157,21 @@ const LoginMicrosoft = ({ navigation, setIsLoggedIn, route }) => {
   /** 🚀 Iniciar flujo Microsoft */
   const iniciarLogin = async () => {
     try {
-      console.log("✅ Iniciando flujo Microsoft...");
+      console.log("🧹 Cerrando sesión previa de Microsoft...");
+      await forceMicrosoftLogout(); // 🔥 OBLIGATORIO para mostrar selector de cuenta
+
+      console.log("🔐 Iniciando flujo Microsoft...");
       await AsyncStorage.setItem("CODE_VERIFIER", request?.codeVerifier || "");
-      await promptAsync({ useProxy: false });
+
+      // Aquí sí inicia el flujo de autenticación
+      await promptAsync({ useProxy: false, prompt: "select_account" });
+
     } catch (error) {
       console.error("❌ Error iniciando login:", error);
       Alert.alert("Error inesperado", error.message || "No se pudo abrir el navegador.");
     }
   };
+
 
   return (
     <View style={styles.container}>

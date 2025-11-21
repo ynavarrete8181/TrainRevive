@@ -69,7 +69,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "dbanu.appgoturno.online",
+              "host": "servicesdbanu.uleam.edu.ec/dbanuproduccion",
               "pathPrefix": "/"
             }
           ],
@@ -84,7 +84,7 @@
       "favicon": "./assets/uleam-ico.png"
     },
     "extra": {
-      "apiUrl": "https://dbanu.appgoturno.online",
+      "apiUrl": "https://servicesdbanu.uleam.edu.ec/dbanuproduccion",
       "eas": {
         "projectId": "fbc17897-48e5-48ce-8012-feeceb288f73"
       }

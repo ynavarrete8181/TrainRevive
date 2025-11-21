@@ -35,6 +35,18 @@ export function patchRedirectForMicrosoft(realRedirect) {
   );
 }
 
+export async function forceMicrosoftLogout() {
+  try {
+    await AuthSession.startAsync({
+      authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
+    });
+    console.log("✔ Sesión Microsoft limpiada");
+  } catch (e) {
+    console.log("No se pudo limpiar sesión:", e);
+  }
+}
+
+
 /**
  * ✅ Configuración base
  */
@@ -49,7 +61,7 @@ export const config = {
       : AuthSession.makeRedirectUri({
           scheme: "com.uleam.edu.ec.gymuleam",
           path: "auth",
-          useProxy: false,
+          useProxy: true,
         }),
 
   fallback: manualDiscovery,

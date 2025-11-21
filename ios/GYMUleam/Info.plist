@@ -47,7 +47,7 @@
     </dict>
     <key>NSExceptionDomains</key>
     <dict>
-      <key>servicesdbanu.uleam.edu.ec</key>
+      <key>servicesdbanu.uleam.edu.ec/dbanuproduccion</key>
       <dict>
         <key>NSIncludesSubdomains</key>
         <true/>
